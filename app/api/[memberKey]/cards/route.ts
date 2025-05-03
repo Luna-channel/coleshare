@@ -77,7 +77,7 @@ export async function GET(
       }).map((story: any) => {
         return {
           path: story.blob_url, // 使用完整URL
-          name: path.basename(story.blob_url),
+          name: story.name, // 使用数据库中的名称
           uploadTime: story.created_at ? new Date(story.created_at).toISOString() : new Date().toISOString()
         }
       })
