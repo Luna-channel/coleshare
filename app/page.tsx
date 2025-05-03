@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ContentCard } from "@/components/content-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PlusIcon, LogOutIcon, QrCodeIcon } from "lucide-react"
+import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download } from "lucide-react"
 import { ContentUploadForm } from "@/components/content-upload-form"
 import { LoginForm } from "@/components/login-form"
 import { ContentType } from "@/lib/db"
@@ -14,7 +14,7 @@ import QRCode from "qrcode"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<ContentType | "all" | "characters">("all")
+  const [activeTab, setActiveTab] = useState<ContentType | "all" | "characters">(ContentType.CHARACTER_CARD)
   const [contents, setContents] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -23,10 +23,52 @@ export default function Home() {
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [editingContent, setEditingContent] = useState<any>(null)
   const [dbAvailable, setDbAvailable] = useState(true)
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  
+  // 环境变量配置状态
+  const [configState, setConfigState] = useState<{
+    hasMemberKey: boolean;
+    hasAdminKey: boolean;
+    allowPublicAccess: boolean;
+  }>({
+    hasMemberKey: false,
+    hasAdminKey: false,
+    allowPublicAccess: false
+  })
   
   // 二维码相关状态
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("")
+
+  // 获取配置状态
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch("/api/config")
+        if (response.ok) {
+          const config = await response.json()
+          setConfigState(config)
+          
+          // 如果没有设置管理员密钥，显示警告
+          if (!config.hasAdminKey) {
+            console.warn("未设置管理员密钥 (ADMIN_KEY)，无法使用管理功能")
+          }
+        }
+      } catch (error) {
+        console.error("获取配置状态失败:", error)
+      }
+    }
+    
+    fetchConfig()
+  }, [])
+
+  // 检查是否为管理员
+  useEffect(() => {
+    const adminToken = localStorage.getItem('adminToken');
+    if (adminToken) {
+      setIsAdmin(true);
+    }
+  }, []);
 
   // 处理显示二维码
   const showQRCode = async () => {
@@ -285,8 +327,8 @@ export default function Home() {
     fetchContents()
   }
 
-  // 如果既不是管理员也不是成员，显示登录表单
-  if (!isMember && !isAdmin) {
+  // 如果需要登录且未登录，或者显示登录表单，则显示登录表单
+  if ((configState.hasMemberKey && !isMember && !isAdmin) || showLoginForm) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
         <div className="container mx-auto py-12 px-4">
@@ -294,8 +336,18 @@ export default function Home() {
             <h1 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
               OMateShare
             </h1>
+            {!configState.hasAdminKey && (
+              <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-lg mb-6 max-w-md">
+                <p className="font-medium">警告: 未设置管理员密钥 (ADMIN_KEY)</p>
+                <p className="text-sm mt-2">请在环境变量中设置 ADMIN_KEY 以启用管理功能。</p>
+              </div>
+            )}
             <div className="w-full max-w-md">
-              <LoginForm />
+              <LoginForm 
+                onCancel={showLoginForm ? () => setShowLoginForm(false) : undefined}
+                initialType={configState.hasMemberKey ? "member" : "admin"}
+                disableMemberLogin={!configState.hasMemberKey}
+              />
             </div>
           </div>
         </div>
@@ -332,9 +384,20 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
       <div className="container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
-            OMateShare
-          </h1>
+          <div className="flex items-end">
+            <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+              OMateShare
+            </h1>
+            <a 
+              href="https://help.omate.org/#%E4%B8%8B%E8%BD%BD" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200 flex items-center ml-4 mb-6"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              下载 OMate
+            </a>
+          </div>
 
           {!dbAvailable && (
             <div className="bg-amber-500/20 border border-amber-500 text-white p-4 rounded-lg mb-6">
@@ -366,13 +429,13 @@ export default function Home() {
                   上传内容
                 </Button>
               )}
-              <Button 
+              {/* <Button 
                 variant="outline" 
                 className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
                 onClick={() => setActiveTab("characters")}
               >
                 <span>角色卡编辑器</span>
-              </Button>
+              </Button> */}
               <Button 
                 variant="outline" 
                 className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-3"
@@ -380,14 +443,39 @@ export default function Home() {
               >
                 <QrCodeIcon className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="outline" 
-                className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700" 
-                onClick={handleLogout}
-              >
-                <LogOutIcon className="mr-2 h-4 w-4" />
-                登出
-              </Button>
+              
+              {/* 根据配置状态和登录状态显示不同的按钮 */}
+              {isAdmin ? (
+                // 管理员已登录，显示登出按钮
+                <Button 
+                  variant="outline" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700" 
+                  onClick={handleLogout}
+                >
+                  <LogOutIcon className="mr-2 h-4 w-4" />
+                  登出
+                </Button>
+              ) : configState.hasAdminKey && (!configState.hasMemberKey || !isMember) ? (
+                // 有管理员密钥但未登录，显示管理员登录按钮
+                <Button 
+                  variant="outline" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
+                  onClick={() => setShowLoginForm(true)}
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  管理员登录
+                </Button>
+              ) : isMember && !configState.allowPublicAccess ? (
+                // 成员已登录，显示登出按钮
+                <Button 
+                  variant="outline" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700" 
+                  onClick={handleLogout}
+                >
+                  <LogOutIcon className="mr-2 h-4 w-4" />
+                  登出
+                </Button>
+              ) : null}
             </div>
           </div>
 

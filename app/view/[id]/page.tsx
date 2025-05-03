@@ -58,10 +58,78 @@ export default function ViewContent({ params }: { params: { id: string } }) {
         return "事件书"
       case "prompt_injection":
         return "提示注入"
+      case "story_book":
+        return "故事书"
       default:
         return "未知类型"
     }
   }
+
+  // 判断是否显示图像
+  const shouldShowImage = () => {
+    return !!content?.thumbnail_url;
+  }
+  
+  // 处理文件下载
+  const handleDownload = async () => {
+    try {
+      // 从URL中提取文件名
+      const url = content.blob_url;
+      const urlParts = url.split('/');
+      let fileName = urlParts[urlParts.length - 1];
+      
+      // 如果文件名包含查询参数，去掉它们
+      if (fileName.includes('?')) {
+        fileName = fileName.split('?')[0];
+      }
+      
+      // 根据内容类型设置更友好的文件名
+      const typeLabel = getTypeLabel(content.content_type);
+      const cleanName = content.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
+      
+      // 确保文件扩展名正确
+      let extension = fileName.split('.').pop();
+      if (!extension || extension.length > 5) {
+        // 根据内容类型设置默认扩展名
+        if (content.content_type === 'character_card') {
+          extension = 'png';
+        } else {
+          extension = 'json';
+        }
+      }
+      
+      // 确保文件名有正确的前缀
+      const downloadName = `${cleanName}_${typeLabel}.${extension}`;
+      console.log('下载文件名:', downloadName);
+      
+      // 获取文件内容
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('获取文件内容失败');
+      }
+      
+      const blob = await response.blob();
+      
+      // 创建下载链接
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = downloadName;
+      
+      // 模拟点击下载
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      setTimeout(() => {
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(link);
+      }, 100);
+    } catch (error) {
+      console.error('下载文件失败:', error);
+      alert('下载文件失败，请稍后重试');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,28 +161,36 @@ export default function ViewContent({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
       <div className="container mx-auto py-6 px-4">
         <div className="mb-8">
-          <Button asChild variant="outline" className="mb-6">
+          <Button asChild variant="outline" className="mb-6 bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              返回首页
+              <span>返回首页</span>
             </Link>
           </Button>
 
           <div className="flex flex-col md:flex-row gap-8">
             {/* 左侧：图片预览 */}
             <div className="w-full md:w-1/3">
-              <div className="aspect-[3/4] rounded-lg overflow-hidden border border-gray-700">
-                <img
-                  src={content.thumbnail_url || "/placeholder.svg?height=400&width=300"}
-                  alt={content.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {shouldShowImage() ? (
+                <div className="aspect-[3/4] rounded-lg overflow-hidden border border-gray-700">
+                  <img
+                    src={content.thumbnail_url}
+                    alt={content.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // 图片加载失败时隐藏图片元素
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="aspect-[3/4] rounded-lg overflow-hidden border border-gray-700 bg-gradient-to-b from-blue-800 to-blue-900"></div>
+              )}
 
               <div className="mt-4">
-                <Button className="w-full" onClick={() => window.open(content.blob_url, "_blank")}>
+                <Button className="w-full" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
-                  下载{getTypeLabel(content.content_type)}
+                  <span>下载{getTypeLabel(content.content_type)}</span>
                 </Button>
               </div>
             </div>

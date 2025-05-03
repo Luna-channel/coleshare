@@ -48,7 +48,7 @@ export function CharacterList() {
         const apiBaseUrl = getApiBaseUrl()
         
         // 获取member_key
-        let memberKey = localStorage.getItem("memberKey") || ""
+        let memberKey = localStorage.getItem("memberToken") || localStorage.getItem("adminToken") || ""
         
         // 如果没有保存过，尝试获取
         if (!memberKey) {
@@ -70,8 +70,8 @@ export function CharacterList() {
 
         // 添加member_key到URL路径中
         const cardsUrl = memberKey 
-          ? `${apiBaseUrl}/oc/${memberKey}/cards.json` 
-          : `${apiBaseUrl}/oc/cards.json`
+          ? `${apiBaseUrl}/api/${memberKey}/cards.json` 
+          : `${apiBaseUrl}/api/cards.json`
 
         const response = await fetch(cardsUrl, {
           signal: controller.signal,
@@ -162,7 +162,7 @@ export function CharacterList() {
       const apiBaseUrl = getApiBaseUrl()
 
       // Construct the full PNG URL from the filePath
-      const pngUrl = `${apiBaseUrl}/oc/${character.filePath}`
+      const pngUrl = character.filePath.startsWith('http') ? character.filePath : `${apiBaseUrl}/oc/${character.filePath}`
 
       // Fetch the PNG file with timeout
       const controller = new AbortController()
@@ -193,7 +193,7 @@ export function CharacterList() {
       const characterForEdit = {
         id: character.id,
         name: character.name,
-        image: `${apiBaseUrl}/oc/${character.coverPath}`,
+        image: character.coverPath.startsWith('http') ? character.coverPath : `${apiBaseUrl}/oc/${character.coverPath}`,
         description: character.intro,
         fullDescription: character.description,
         gender: character.gender,
@@ -272,7 +272,9 @@ export function CharacterList() {
                 name: character.name,
                 image: useFallback
                   ? character.coverPath // Use direct path for fallback
-                  : `${getApiBaseUrl()}/oc/${character.coverPath}`,
+                  : character.coverPath.startsWith('http')
+                    ? character.coverPath // Use direct path if it starts with 'http'
+                    : `${getApiBaseUrl()}/oc/${character.coverPath}`,
                 description: character.intro,
                 tags: [],
               }}

@@ -9,9 +9,15 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Lock } from "lucide-react"
 
-export function LoginForm() {
+interface LoginFormProps {
+  onCancel?: () => void;
+  initialType?: "admin" | "member";
+  disableMemberLogin?: boolean;
+}
+
+export function LoginForm({ onCancel, initialType = "member", disableMemberLogin = false }: LoginFormProps) {
   const [key, setKey] = useState("")
-  const [type, setType] = useState<"admin" | "member">("member")
+  const [type, setType] = useState<"admin" | "member">(initialType)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -70,13 +76,22 @@ export function LoginForm() {
                 type="button"
                 variant={type === "member" ? "default" : "outline"}
                 onClick={() => setType("member")}
+                disabled={disableMemberLogin}
+                title={disableMemberLogin ? "未设置成员密钥" : undefined}
               >
                 成员访问
               </Button>
-              <Button type="button" variant={type === "admin" ? "default" : "outline"} onClick={() => setType("admin")}>
+              <Button 
+                type="button" 
+                variant={type === "admin" ? "default" : "outline"} 
+                onClick={() => setType("admin")}
+              >
                 管理员访问
               </Button>
             </div>
+            {disableMemberLogin && type === "admin" && (
+              <p className="text-xs text-amber-500 mt-1">未设置成员密钥，仅可使用管理员登录</p>
+            )}
           </div>
           <div className="space-y-2">
             <Input
@@ -90,8 +105,18 @@ export function LoginForm() {
           </div>
           {error && <div className="text-sm font-medium text-red-500">{error}</div>}
         </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        <CardFooter className="flex justify-between">
+          {onCancel && (
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel}
+              className="mr-2"
+            >
+              返回
+            </Button>
+          )}
+          <Button type="submit" className={`${onCancel ? 'flex-1' : 'w-full'}`} disabled={isLoading}>
             {isLoading ? (
               <div className="flex items-center">
                 <div className="animate-spin mr-2 h-4 w-4 border-2 border-b-transparent rounded-full"></div>

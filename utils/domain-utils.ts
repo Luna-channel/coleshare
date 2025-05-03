@@ -1,61 +1,45 @@
 /**
- * Utility functions for domain-based language and URL handling
+ * Utility functions for domain handling and URL generation
  */
 
-// Get the base domain (omate.org or omate.net) based on current hostname
+// Get the current hostname
 export function getBaseDomain(): string {
   if (typeof window === "undefined") return "omate.net" // Default for server-side rendering
 
   try {
-    const hostname = window.location.hostname
-
-    if (hostname.endsWith("omate.org")) {
-      return "omate.org"
-    } else {
-      return "omate.net" // Default to .net for any other domain
-    }
+    return window.location.hostname
   } catch (error) {
     console.error("Error determining base domain:", error)
     return "omate.net" // Fallback to .net on error
   }
 }
 
-// Get the default language based on the domain
-export function getDefaultLanguage(): "zh-CN" | "en" {
+export function getBaseUrl(): string {
+  if (typeof window === "undefined") return "omate.net"
   try {
-    const baseDomain = getBaseDomain()
-    return baseDomain === "omate.org" ? "zh-CN" : "en"
+    return window.location.origin
   } catch (error) {
-    console.error("Error determining default language:", error)
-    return "en" // Fallback to English on error
+    console.error("Error determining base URL:", error)
+    return "omate.net" // Fallback to .net on error
   }
 }
 
-// Adjust external links based on the current domain
+// Default language is always 中文 now
+export function getDefaultLanguage(): "zh-CN" {
+  return "zh-CN"
+}
+
+// Simply return the original URL as no domain adjustment needed
 export function adjustExternalLink(url: string): string {
-  try {
-    const baseDomain = getBaseDomain()
-
-    // If the URL contains omate.xxx, adjust it to match the current domain
-    if (url.includes("omate.")) {
-      // Replace any omate.xxx with the current base domain
-      return url.replace(/omate\.[a-z]+/g, baseDomain)
-    }
-
-    return url
-  } catch (error) {
-    console.error("Error adjusting external link:", error)
-    return url // Return original URL on error
-  }
+  return url
 }
 
-// Get the API base URL based on the current domain
+// Get the API base URL using the current hostname
 export function getApiBaseUrl(): string {
   try {
-    const baseDomain = getBaseDomain()
-    return `https://cards.${baseDomain}`
+    return getBaseUrl()
   } catch (error) {
     console.error("Error determining API base URL:", error)
-    return "https://cards.omate.net" // Fallback to .net on error
+    return "https://cards.omate.net" // Fallback on error
   }
 }

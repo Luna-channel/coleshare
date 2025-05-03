@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getContents, ContentType } from "@/lib/db"
-import path from "path"
+import { formatCharacterCards } from "@/lib/card-formatter"
 
-// 获取角色卡列表 - 带有memberKey验证的版本
+// 获取角色卡列表 - 带有密钥验证的版本（支持memberKey和adminKey）
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ memberKey?: string }> }
@@ -11,12 +11,28 @@ export async function GET(
     // 从路径参数中获取key (需要await params)
     const { memberKey: key = "" } = await params;
     
-    // 获取环境变量中的成员密钥
+    // 获取环境变量中的密钥
     const memberKey = process.env.MEMBER_KEY
+    const adminKey = process.env.ADMIN_KEY
     
-    // 验证密钥
-    if (memberKey && key !== memberKey) {
-      console.log(`密钥不匹配: 提供的是'${key}', 期望的是'${memberKey}'`);
+    // 验证密钥 - 支持memberKey和adminKey两种
+    let isAuthorized = false
+    
+    // 1. 检查是否匹配adminKey
+    if (adminKey && key === adminKey) {
+      console.log(`管理员密钥验证通过: '${key}'`);
+      isAuthorized = true
+    }
+    
+    // 2. 检查是否匹配memberKey
+    else if (memberKey && key === memberKey) {
+      console.log(`成员密钥验证通过: '${key}'`);
+      isAuthorized = true
+    }
+    
+    // 如果验证失败且需要验证
+    if (!isAuthorized && (memberKey || adminKey)) {
+      console.log(`密钥不匹配: 提供的是'${key}'`);
       return NextResponse.json({ error: "无权限访问" }, { status: 403 })
     }
     
@@ -32,71 +48,8 @@ export async function GET(
       // 继续执行，不抛出错误
     }
     
-    // 转换为客户端期望的格式
-    const cards = characterCards.map((card: any) => {
-      // 从blob_url中提取文件名
-      const fileName = path.basename(card.blob_url)
-      const uploadTime = card.created_at ? new Date(card.created_at).toISOString() : new Date().toISOString()
-      
-      // 尝试从描述或元数据中提取额外信息
-      let gender = "unknown"
-      let intro = card.description || ""
-      let personality = ""
-      let selectedStoryBooks: string[] = []
-      
-      // 如果有元数据，尝试解析
-      if (card.metadata) {
-        try {
-          const metadata = typeof card.metadata === 'string' 
-            ? JSON.parse(card.metadata) 
-            : card.metadata
-            
-          gender = metadata.gender || gender
-          intro = metadata.intro || intro
-          personality = metadata.personality || personality
-          
-          // 获取选中的故事书ID
-          if (metadata.selectedStoryBooks && Array.isArray(metadata.selectedStoryBooks)) {
-            selectedStoryBooks = metadata.selectedStoryBooks
-          }
-        } catch (e) {
-          console.error("解析元数据失败:", e)
-        }
-      }
-      
-      // 查找与此角色卡相关的故事书
-      const relatedStories = storyBooks.filter((story: any) => {
-        // 1. 检查故事书是否在selectedStoryBooks中
-        if (selectedStoryBooks.includes(String(story.id))) {
-          return true
-        }
-        
-        // 2. 检查标签是否包含角色卡名称或ID（向后兼容）
-        const storyTags = story.tags || []
-        return storyTags.includes(card.name) || storyTags.includes(String(card.id))
-      }).map((story: any) => {
-        return {
-          path: story.blob_url, // 使用完整URL
-          name: path.basename(story.blob_url),
-          uploadTime: story.created_at ? new Date(story.created_at).toISOString() : new Date().toISOString()
-        }
-      })
-      
-      return {
-        id: String(card.id),
-        name: card.name,
-        fileName: fileName,
-        filePath: card.blob_url,
-        coverPath: card.thumbnail_url || card.blob_url,
-        fileType: fileName.includes('.') ? path.extname(fileName).replace(".", "") : "",
-        uploadTime,
-        gender,
-        intro,
-        description: intro, // 保持向后兼容
-        personality,
-        stories: relatedStories
-      }
-    })
+    // 使用共享函数处理格式转换
+    const cards = formatCharacterCards(characterCards, storyBooks)
     
     // 返回符合规范的结果
     return NextResponse.json({ cards })

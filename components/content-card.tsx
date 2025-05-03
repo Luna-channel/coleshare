@@ -68,7 +68,7 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
 
   const styles = getTypeStyles()
 
-  // 内容类型中文名称
+  // 获取内容类型中文名称
   const getTypeLabel = () => {
     switch (content.content_type) {
       case "character_card":
@@ -85,6 +85,64 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
         return "未知类型"
     }
   }
+
+  // 处理下载文件
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // 从URL中提取文件名
+      const url = content.blob_url;
+      const urlParts = url.split('/');
+      let fileName = urlParts[urlParts.length - 1];
+      
+      // 如果文件名包含查询参数，去掉它们
+      if (fileName.includes('?')) {
+        fileName = fileName.split('?')[0];
+      }
+      
+      // 根据内容类型设置更友好的文件名
+      const typeLabel = getTypeLabel();
+      // 生成时间戳
+      const timestamp = Date.now();
+      const cleanName = content.name.replace(/[^\w\s\u4e00-\u9fa5-]/g, '').trim().replace(/\s+/g, '_') || timestamp;
+      
+      // 确保文件扩展名正确
+      let extension = fileName.split('.').pop();
+      if (!extension || extension.length > 5) {
+        // 根据内容类型设置默认扩展名
+        if (content.content_type === 'character_card') {
+          extension = 'png';
+        } else {
+          extension = 'json';
+        }
+      }
+      
+      const downloadName = `${cleanName}_${typeLabel}.${extension}`;
+      
+      // 获取文件内容
+      const response = await fetch(url);
+      const blob = await response.blob();
+      
+      // 创建下载链接
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = downloadName;
+      
+      // 模拟点击下载
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      setTimeout(() => {
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(link);
+      }, 100);
+    } catch (error) {
+      console.error('下载文件失败:', error);
+      alert('下载文件失败，请稍后重试');
+    }
+  };
 
   // 获取内容类型的默认占位图
   const getPlaceholderImage = () => {
@@ -104,6 +162,26 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
     }
   }
 
+  // 判断是否显示图像
+  const shouldShowImage = () => {
+    // 只有当有缩略图时才显示图片
+    return !!content.thumbnail_url;
+  }
+
+  // 获取要显示的图片URL
+  const getImageUrl = () => {
+    // 如果有缩略图，则使用缩略图
+    if (content.thumbnail_url) {
+      return content.thumbnail_url;
+    }
+    // 如果是角色卡但没有缩略图，则使用占位图
+    if (content.content_type === "character_card") {
+      return getPlaceholderImage();
+    }
+    // 其他情况返回空字符串
+    return "";
+  }
+
   return (
     <Card
       className={`overflow-hidden relative group border-0 rounded-lg bg-gradient-to-b ${styles.bgGradient} shadow-lg transition-all duration-300 hover:${styles.hoverShadow} hover:scale-[1.02]`}
@@ -115,15 +193,17 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
           className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10"
           style={{ opacity: isHovered ? 0.9 : 0.7 }}
         />
-        <img
-          src={content.thumbnail_url || getPlaceholderImage()}
-          alt={content.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          onError={(e) => {
-            // 图片加载失败时使用占位图
-            e.currentTarget.src = getPlaceholderImage();
-          }}
-        />
+        {shouldShowImage() && (
+          <img
+            src={content.thumbnail_url}
+            alt={content.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e) => {
+              // 图片加载失败时移除图片
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
 
         <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
           <div className="mb-1 text-xs font-medium text-gray-300">{getTypeLabel()}</div>
@@ -172,7 +252,7 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
           size="icon"
           variant="ghost"
           className="h-8 w-8 rounded-full bg-black/50 hover:bg-amber-600 text-white"
-          onClick={() => window.open(content.blob_url, "_blank")}
+          onClick={handleDownload}
         >
           <Download className="h-4 w-4" />
           <span className="sr-only">下载</span>

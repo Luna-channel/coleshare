@@ -4,15 +4,104 @@ import { neon } from "@neondatabase/serverless"
 let sqlClient: any = null
 
 // 检查环境变量是否存在
-if (process.env.DATABASE_URL) {
+if (typeof window === 'undefined' && process.env.DATABASE_URL) {
   try {
     sqlClient = neon(process.env.DATABASE_URL)
     console.log("数据库连接初始化成功")
+    
+    // 添加数据库结构检查和初始化
+    checkAndInitDatabase().catch(err => {
+      console.error("数据库初始化检查失败:", err)
+    })
   } catch (error) {
     console.error("数据库连接初始化失败:", error)
   }
-} else {
+} else if (typeof window === 'undefined') {
   console.warn("DATABASE_URL 环境变量未设置，数据库功能将不可用")
+}
+
+// 检查数据库结构并初始化
+async function checkAndInitDatabase() {
+  try {
+    console.log("正在检查数据库结构...")
+    
+    // 检查contents表是否存在
+    const tableExists = await sqlClient`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public'
+        AND table_name = 'contents'
+      ) as exists
+    `
+    
+    if (tableExists[0]?.exists) {
+      console.log("数据库结构已存在，无需初始化")
+      return
+    }
+    
+    console.log("数据库表不存在，开始初始化...")
+    
+    try {
+      // 如果在服务器端，使用API路由初始化数据库
+      if (typeof window === 'undefined') {
+        // 使用fetch调用API路由
+        const response = await fetch(`${process.env.NEXT_PUBLIC_URL || process.env.VERCEL_URL || 'http://localhost:3000'}/api/init-db`);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`API初始化失败: ${errorData.message || response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log("数据库API初始化结果:", data);
+      }
+    } catch (error) {
+      console.error("通过API初始化数据库失败:", error);
+      
+      // 尝试直接执行SQL语句的方式（备用方案）
+      try {
+        // 动态导入fs和path模块（只在服务器端）
+        const { readFileSync, existsSync } = await import('fs');
+        const { join } = await import('path');
+        
+        // 读取schema.sql文件
+        const schemaPath = join(process.cwd(), 'scripts', 'schema.sql');
+        
+        // 检查文件是否存在
+        if (!existsSync(schemaPath)) {
+          console.error("未找到schema.sql文件，无法初始化数据库");
+          return;
+        }
+        
+        const schemaSQL = readFileSync(schemaPath, 'utf8');
+        
+        // 分割SQL语句
+        const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
+        
+        // 执行每个SQL语句
+        for (const statement of statements) {
+          if (statement.trim()) {
+            try {
+              // 使用SQL标签模板执行语句
+              await sqlClient`${statement.trim()}`;
+              console.log("执行SQL语句成功");
+            } catch (err) {
+              // 如果表已存在等错误，输出但继续执行
+              console.warn("SQL执行警告:", err);
+            }
+          }
+        }
+      } catch (fsError) {
+        console.error("备用初始化方法也失败:", fsError);
+        throw fsError;
+      }
+    }
+    
+    console.log("数据库自动初始化完成！");
+  } catch (error) {
+    console.error("数据库自动初始化失败:", error);
+    throw error;
+  }
 }
 
 // 内容类型枚举
