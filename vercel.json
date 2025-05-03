@@ -8,27 +8,5 @@
     "deploymentEnabled": {
       "main": true
     }
-  },
-  "env": [
-    {
-      "key": "DATABASE_URL",
-      "description": "Neon数据库连接字符串",
-      "type": "string"
-    },
-    {
-      "key": "BLOB_READ_WRITE_TOKEN",
-      "description": "Vercel Blob存储令牌",
-      "type": "string"
-    },
-    {
-      "key": "ADMIN_KEY",
-      "description": "管理员访问令牌",
-      "type": "string"
-    },
-    {
-      "key": "MEMBER_KEY",
-      "description": "会员访问令牌（可选）",
-      "type": "string"
-    }
-  ]
+  }
 } 
