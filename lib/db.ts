@@ -73,23 +73,62 @@ async function checkAndInitDatabase() {
           return;
         }
         
-        const schemaSQL = readFileSync(schemaPath, 'utf8');
-        
-        // 分割SQL语句
-        const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
-        
-        // 执行每个SQL语句
-        for (const statement of statements) {
-          if (statement.trim()) {
-            try {
-              // 使用SQL标签模板执行语句
-              await sqlClient`${statement.trim()}`;
-              console.log("执行SQL语句成功");
-            } catch (err) {
-              // 如果表已存在等错误，输出但继续执行
-              console.warn("SQL执行警告:", err);
-            }
-          }
+        try {
+          // 手动执行特定的表创建SQL语句
+          // 1. 创建content_type枚举类型
+          await sqlClient`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'content_type') THEN
+                    CREATE TYPE content_type AS ENUM (
+                      'character_card',
+                      'knowledge_base',
+                      'event_book',
+                      'prompt_injection',
+                      'story_book'
+                    );
+                END IF;
+            END$$;
+          `;
+          
+          // 2. 创建contents表
+          await sqlClient`
+            CREATE TABLE IF NOT EXISTS contents (
+              id SERIAL PRIMARY KEY,
+              name VARCHAR(255) NOT NULL,
+              description TEXT,
+              content_type content_type NOT NULL,
+              blob_url TEXT NOT NULL,
+              thumbnail_url TEXT,
+              metadata JSONB,
+              tags TEXT[],
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+          `;
+          
+          // 3. 创建access_logs表
+          await sqlClient`
+            CREATE TABLE IF NOT EXISTS access_logs (
+              id SERIAL PRIMARY KEY,
+              content_id INTEGER REFERENCES contents(id),
+              access_type VARCHAR(50) NOT NULL,
+              ip_address VARCHAR(100),
+              user_agent TEXT,
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+          `;
+          
+          // 4. 创建索引
+          await sqlClient`CREATE INDEX IF NOT EXISTS idx_contents_content_type ON contents(content_type);`;
+          await sqlClient`CREATE INDEX IF NOT EXISTS idx_access_logs_content_id ON access_logs(content_id);`;
+          await sqlClient`CREATE INDEX IF NOT EXISTS idx_contents_created_at ON contents(created_at);`;
+          await sqlClient`CREATE INDEX IF NOT EXISTS idx_contents_updated_at ON contents(updated_at);`;
+          
+          console.log("执行SQL脚本成功");
+        } catch (err) {
+          console.error("SQL执行失败:", err);
+          throw err;
         }
       } catch (fsError) {
         console.error("备用初始化方法也失败:", fsError);
