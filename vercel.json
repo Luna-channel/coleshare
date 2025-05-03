@@ -9,18 +9,26 @@
       "main": true
     }
   },
-  "env": {
-    "DATABASE_URL": {
-      "description": "Neon数据库连接字符串"
+  "env": [
+    {
+      "key": "DATABASE_URL",
+      "description": "Neon数据库连接字符串",
+      "type": "string"
     },
-    "BLOB_READ_WRITE_TOKEN": {
-      "description": "Vercel Blob存储令牌"
+    {
+      "key": "BLOB_READ_WRITE_TOKEN",
+      "description": "Vercel Blob存储令牌",
+      "type": "string"
     },
-    "ADMIN_KEY": {
-      "description": "管理员访问令牌"
+    {
+      "key": "ADMIN_KEY",
+      "description": "管理员访问令牌",
+      "type": "string"
     },
-    "MEMBER_KEY": {
-      "description": "会员访问令牌（可选）"
+    {
+      "key": "MEMBER_KEY",
+      "description": "会员访问令牌（可选）",
+      "type": "string"
     }
-  }
+  ]
 } 
