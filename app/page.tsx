@@ -62,6 +62,15 @@ export default function Home() {
     fetchConfig()
   }, [])
 
+  // 更新版权信息
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    const copyrightEl = document.getElementById('domainCopyright');
+    if (copyrightEl) {
+      copyrightEl.textContent = `© ${hostname} All Rights Reserved`;
+    }
+  }, []);
+
   // 检查是否为管理员
   useEffect(() => {
     const adminToken = localStorage.getItem('adminToken');
@@ -381,8 +390,8 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
-      <div className="container mx-auto py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white flex flex-col">
+      <div className="container mx-auto py-8 px-4 flex-grow">
         <div className="mb-8">
           <div className="flex items-end">
             <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
@@ -530,6 +539,17 @@ export default function Home() {
           </DialogContent>
         </Dialog>
       </div>
+      
+      {/* 页脚 */}
+      <footer className="mt-auto py-8 px-4 text-center text-gray-400 text-sm bg-gradient-to-b from-transparent to-gray-900 w-full">
+        <div className="max-w-3xl mx-auto border-t border-gray-800 pt-8">
+          <p>
+            <span id="domainCopyright" className="text-gray-400">&Copy; All Rights Reserved</span> · Powered By <a href="https://github.com/easychen/omateshare" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 transition-colors">OMateShare</a>
+          </p>
+          <p className="mb-2 mt-2 text-gray-500 ">请在严守当地法律法规和尊重知识产权的前提下使用OMateShare</p>
+          <p className="text-gray-600 text-xs">OMate 不承担违规使用带来的任何连带责任</p>
+        </div>
+      </footer>
     </div>
   )
 

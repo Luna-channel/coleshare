@@ -2,7 +2,7 @@
 
 一个基于Next.js构建的内容分享平台，支持多种类型内容的上传、管理和分享。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgitlab.com%2Feasychen%2Fomateshare&env=DATABASE_URL,BLOB_READ_WRITE_TOKEN,ADMIN_KEY,MEMBER_KEY&envDescription=环境变量配置指南&envLink=https%3A%2F%2Fgitlab.com%2Feasychen%2Fomateshare%23%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Feasychen%2Fomateshare&env=DATABASE_URL,BLOB_READ_WRITE_TOKEN,ADMIN_KEY,MEMBER_KEY&envDescription=环境变量配置指南&envLink=https%3A%2F%2Fgithub.com%2Feasychen%2Fomateshare%23%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F)
 
 ## 功能特性
 
@@ -29,7 +29,7 @@
 1. 克隆代码库
 
 ```bash
-git clone https://gitlab.com/easychen/omateshare.git
+git clone https://github.com/easychen/omateshare.git
 cd omateshare
 ```
 
@@ -159,4 +159,4 @@ yarn dev
 
 ## 许可证
 
-MIT 
+GPLv3 
