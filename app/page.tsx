@@ -581,8 +581,8 @@ export default function Home() {
         <div className="text-center py-12">
           <p className="text-gray-400 mb-4">暂无内容</p>
           {isAdmin && (
-            <Button onClick={() => setShowUploadForm(true)} variant="outline">
-              上传新内容
+            <Button onClick={() => setShowUploadForm(true)} variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
+              <span>上传新内容</span>
             </Button>
           )}
         </div>
