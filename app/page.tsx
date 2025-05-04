@@ -104,8 +104,13 @@ export default function Home() {
     const hostname = window.location.hostname;
     const copyrightEl = document.getElementById('domainCopyright');
     if (copyrightEl) {
-      // 如果有设置网站名称，则使用网站名称，否则使用域名
-      const displayName = siteSettings.site_name || hostname || '';
+      // 如果有设置网站名称且不是omateshare，则使用网站名称，否则使用域名
+      let displayName = '';
+      if (siteSettings.site_name && siteSettings.site_name.toLowerCase() !== 'omateshare') {
+        displayName = siteSettings.site_name;
+      } else {
+        displayName = hostname || '';
+      }
       copyrightEl.textContent = `© ${displayName} All Rights Reserved`;
     }
   }, [siteSettings.site_name]);
@@ -407,7 +412,13 @@ export default function Home() {
           const hostname = window.location.hostname;
           const copyrightEl = document.getElementById('domainCopyright');
           if (copyrightEl) {
-            const displayName = settings.site_name || hostname || '';
+            // 如果有设置网站名称且不是omateshare，则使用网站名称，否则使用域名
+            let displayName = '';
+            if (settings.site_name && settings.site_name.toLowerCase() !== 'omateshare') {
+              displayName = settings.site_name;
+            } else {
+              displayName = hostname || '';
+            }
             copyrightEl.textContent = `© ${displayName} All Rights Reserved`;
           }
         }
