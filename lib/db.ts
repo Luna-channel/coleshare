@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless"
+import { nanoid } from "nanoid"
 
 // 初始化数据库连接
 let sqlClient: any = null
@@ -96,6 +97,7 @@ async function checkAndInitDatabase() {
           await sqlClient`
             CREATE TABLE IF NOT EXISTS contents (
               id SERIAL PRIMARY KEY,
+              uuid VARCHAR(36) UNIQUE,
               name VARCHAR(255) NOT NULL,
               description TEXT,
               content_type content_type NOT NULL,
@@ -252,12 +254,14 @@ export async function createContent(data: {
     const thumbnail_url = data.thumbnail_url || null
     const metadata = data.metadata ? JSON.stringify(data.metadata) : null
     const tags = data.tags || []
+    const uuid = nanoid(21) // 生成唯一ID
     
     // 确保标签是正确的格式，PostgreSQL 数组格式为 {item1,item2,item3}
     // 直接将 JavaScript 数组转换为 PostgreSQL 数组格式
     console.log("原始标签数组:", tags);
 
     console.log("创建内容参数:", {
+      uuid,
       name,
       description,
       content_type,
@@ -270,10 +274,11 @@ export async function createContent(data: {
     // 使用标签模板语法，传递 JavaScript 数组，让 neon 库处理类型转换
     const result = await sqlClient`
       INSERT INTO contents (
-        name, description, content_type, blob_url, 
+        uuid, name, description, content_type, blob_url, 
         thumbnail_url, metadata, tags
       )
       VALUES (
+        ${uuid},
         ${name}, 
         ${description}, 
         ${content_type}, 
@@ -294,6 +299,7 @@ export async function createContent(data: {
       console.error("数据库没有返回预期的插入结果");
       return {
         id: Date.now(), // 临时ID
+        uuid,
         name,
         description,
         content_type,

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { withAdminAuth } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
+import { nanoid } from "nanoid"
 
 // 数据库更新API - 仅管理员可访问
 export const GET = withAdminAuth(async (req: NextRequest) => {
@@ -92,6 +93,58 @@ export const GET = withAdminAuth(async (req: NextRequest) => {
         `;
       } else {
         updateResults.push("content_type枚举已包含'story_book'类型");
+      }
+      
+      // 4. 检查contents表是否存在uuid字段
+      const uuidColumnExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public'
+          AND table_name = 'contents'
+          AND column_name = 'uuid'
+        ) as exists
+      `;
+      
+      if (!uuidColumnExists[0]?.exists) {
+        updateResults.push("向contents表添加uuid字段");
+        
+        // 添加uuid字段
+        await sql`
+          ALTER TABLE contents ADD COLUMN uuid VARCHAR(36) UNIQUE;
+        `;
+        
+        // 为已有数据生成uuid
+        const existingContents = await sql`SELECT id FROM contents`;
+        
+        for (const content of existingContents) {
+          const uuid = nanoid(21); // 生成21位的nanoid
+          await sql`
+            UPDATE contents 
+            SET uuid = ${uuid}
+            WHERE id = ${content.id}
+          `;
+        }
+      } else {
+        updateResults.push("contents表已包含uuid字段");
+        
+        // 检查是否有内容没有uuid，为其添加
+        const contentsWithoutUuid = await sql`
+          SELECT id FROM contents 
+          WHERE uuid IS NULL
+        `;
+        
+        if (contentsWithoutUuid.length > 0) {
+          updateResults.push(`为${contentsWithoutUuid.length}条内容添加uuid`);
+          
+          for (const content of contentsWithoutUuid) {
+            const uuid = nanoid(21);
+            await sql`
+              UPDATE contents 
+              SET uuid = ${uuid}
+              WHERE id = ${content.id}
+            `;
+          }
+        }
       }
       
       return NextResponse.json({ 

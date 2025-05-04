@@ -16,6 +16,7 @@ END$$;
 -- 创建内容表（如果不存在）
 CREATE TABLE IF NOT EXISTS contents (
   id SERIAL PRIMARY KEY,
+  uuid VARCHAR(36) UNIQUE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   content_type content_type NOT NULL,

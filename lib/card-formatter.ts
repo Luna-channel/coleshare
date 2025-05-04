@@ -83,7 +83,7 @@ export function formatCharacterCards(characterCards: any[], storyBooks: any[] = 
     })
     
     return {
-      id: String(card.id),
+      id: card.uuid || String(card.id), // 优先使用uuid，否则回退到数字id
       name: card.name,
       fileName: fileName,
       filePath: card.blob_url,
