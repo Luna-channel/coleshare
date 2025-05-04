@@ -3,13 +3,24 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download } from "lucide-react"
+import { ArrowLeft, Download, QrCode } from "lucide-react"
 import Link from "next/link"
+import QRCode from "qrcode"
+import React from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
-export default function ViewContent({ params }: { params: { id: string } }) {
+export default function ViewContent({ params }: { params: any }) {
+  const unwrappedParams = React.use(params) as { id: string }
   const [content, setContent] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [qrDialogOpen, setQrDialogOpen] = useState(false)
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("")
   const router = useRouter()
 
   useEffect(() => {
@@ -19,7 +30,7 @@ export default function ViewContent({ params }: { params: { id: string } }) {
 
       try {
         const token = localStorage.getItem("adminToken") || localStorage.getItem("memberToken") || ""
-        const response = await fetch(`/api/contents/${params.id}`, {
+        const response = await fetch(`/api/contents/${unwrappedParams.id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -45,7 +56,7 @@ export default function ViewContent({ params }: { params: { id: string } }) {
     }
 
     fetchContent()
-  }, [params.id, router])
+  }, [unwrappedParams.id, router])
 
   // 获取内容类型标签
   const getTypeLabel = (type: string) => {
@@ -131,6 +142,25 @@ export default function ViewContent({ params }: { params: { id: string } }) {
     }
   };
 
+  // 处理显示二维码
+  const handleShowQRCode = async () => {
+    try {
+      if (!content || !content.blob_url) {
+        throw new Error("内容链接不可用");
+      }
+      
+      // 生成二维码
+      const qrDataUrl = await QRCode.toDataURL(content.blob_url);
+      setQrCodeDataUrl(qrDataUrl);
+      
+      // 打开对话框
+      setQrDialogOpen(true);
+    } catch (error) {
+      console.error("生成二维码失败:", error);
+      alert("生成二维码失败");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white flex items-center justify-center">
@@ -187,10 +217,17 @@ export default function ViewContent({ params }: { params: { id: string } }) {
                 <div className="aspect-[3/4] rounded-lg overflow-hidden border border-gray-700 bg-gradient-to-b from-blue-800 to-blue-900"></div>
               )}
 
-              <div className="mt-4">
-                <Button className="w-full" onClick={handleDownload}>
+              <div className="mt-4 flex gap-2">
+                <Button className="flex-1" onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
                   <span>下载{getTypeLabel(content.content_type)}</span>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
+                  onClick={handleShowQRCode}
+                >
+                  <QrCode className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -219,7 +256,7 @@ export default function ViewContent({ params }: { params: { id: string } }) {
                   </div>
                 )}
 
-                {content.metadata && (
+                {content.metadata && content.content_type !== "character_card" && (
                   <div className="mb-6">
                     <h2 className="text-xl font-semibold mb-2">元数据</h2>
                     <pre className="bg-gray-800 p-4 rounded-md overflow-x-auto">
@@ -237,6 +274,23 @@ export default function ViewContent({ params }: { params: { id: string } }) {
           </div>
         </div>
       </div>
+
+      {/* 二维码对话框 */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-gray-900 border-gray-800 text-white">
+          <DialogHeader>
+            <DialogTitle>扫描二维码下载</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-4">
+            {qrCodeDataUrl && (
+              <img src={qrCodeDataUrl} alt="QR Code" className="w-64 h-64 bg-white p-4 rounded-lg" />
+            )}
+            <p className="mt-4 text-sm text-center text-gray-500">
+              扫描二维码获取{getTypeLabel(content?.content_type)}下载链接
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { put, del } from "@vercel/blob"
 import { nanoid } from "nanoid"
+import sharp from 'sharp'
 
 // 文件类型映射
 const contentTypeMap = {
@@ -11,6 +12,45 @@ const contentTypeMap = {
 
 // 存储前缀
 const STORAGE_PREFIX = "oshare/"
+
+// 生成jpg缩略图
+async function generateJpegThumbnail(file: File): Promise<File> {
+  try {
+    // 将文件转换为Buffer
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    // 使用sharp转换为jpg格式，质量设为80%
+    const jpegBuffer = await sharp(buffer)
+      .resize(800) // 限制最大宽度为800像素
+      .jpeg({ quality: 80 })
+      .toBuffer()
+    
+    // 在服务器环境中创建File对象
+    const fileName = `thumbnail-${nanoid()}.jpg`
+    
+    // 服务器环境下创建File对象的兼容方式
+    if (typeof File !== 'undefined') {
+      // 浏览器环境
+      return new File([jpegBuffer], fileName, {
+        type: 'image/jpeg'
+      })
+    } else {
+      // Node.js环境 (Vercel Edge Function)
+      // 使用Blob作为替代方案
+      const blob = new Blob([jpegBuffer], { type: 'image/jpeg' })
+      Object.defineProperty(blob, 'name', {
+        value: fileName,
+        writable: false
+      })
+      return blob as unknown as File
+    }
+  } catch (error) {
+    console.error("缩略图生成失败:", error)
+    // 如果转换失败，返回原始文件
+    return file
+  }
+}
 
 // 上传文件到Blob存储
 export async function uploadToBlob(
@@ -39,8 +79,25 @@ export async function uploadToBlob(
     // 图片文件扩展名列表
     const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']
     
-    // 检查是否是图片文件
-    if (contentType === "character_card" || imageExtensions.includes(extension.toLowerCase())) {
+    // 角色卡需要生成jpg缩略图
+    if (contentType === "character_card") {
+      // 生成jpg缩略图
+      const thumbnailFile = await generateJpegThumbnail(file)
+      
+      // 上传缩略图
+      const thumbnailFilename = `thumbnail_${contentType}_${nanoid()}.jpg`
+      const prefixedThumbnailFilename = `${STORAGE_PREFIX}${thumbnailFilename}`
+      
+      const { url: thumbnailFileUrl } = await put(prefixedThumbnailFilename, thumbnailFile, {
+        access: "public",
+        addRandomSuffix: true,
+        allowOverwrite: true,
+      })
+      
+      thumbnailUrl = thumbnailFileUrl
+    }
+    // 其他图片文件直接使用原图作为缩略图
+    else if (imageExtensions.includes(extension.toLowerCase())) {
       thumbnailUrl = url
     }
     

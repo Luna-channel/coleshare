@@ -85,7 +85,8 @@ async function checkAndInitDatabase() {
                       'knowledge_base',
                       'event_book',
                       'prompt_injection',
-                      'story_book'
+                      'story_book',
+                      'other'
                     );
                 END IF;
             END$$;
@@ -119,7 +120,32 @@ async function checkAndInitDatabase() {
             );
           `;
           
-          // 4. 创建索引
+          // 4. 创建site_settings表
+          await sqlClient`
+            CREATE TABLE IF NOT EXISTS site_settings (
+              id SERIAL PRIMARY KEY,
+              site_name VARCHAR(255) DEFAULT 'OMateShare',
+              show_download_link BOOLEAN DEFAULT true,
+              page_title VARCHAR(255) DEFAULT 'OMateShare',
+              meta_description TEXT DEFAULT '管理角色卡、知识库、事件书和提示注入',
+              created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+          `;
+          
+          // 5. 检查site_settings表是否有记录，没有则插入默认记录
+          const settingsExist = await sqlClient`
+            SELECT COUNT(*) FROM site_settings
+          `;
+          
+          if (parseInt(settingsExist[0].count) === 0) {
+            await sqlClient`
+              INSERT INTO site_settings (site_name, show_download_link, page_title, meta_description)
+              VALUES ('OMateShare', true, 'OMateShare', '管理角色卡、知识库、事件书和提示注入')
+            `;
+          }
+          
+          // 6. 创建索引
           await sqlClient`CREATE INDEX IF NOT EXISTS idx_contents_content_type ON contents(content_type);`;
           await sqlClient`CREATE INDEX IF NOT EXISTS idx_access_logs_content_id ON access_logs(content_id);`;
           await sqlClient`CREATE INDEX IF NOT EXISTS idx_contents_created_at ON contents(created_at);`;
@@ -150,6 +176,7 @@ export enum ContentType {
   EVENT_BOOK = "event_book",
   PROMPT_INJECTION = "prompt_injection",
   STORY_BOOK = "story_book",
+  OTHER = "other",
 }
 
 // 内容查询函数
@@ -480,5 +507,168 @@ export async function logAccess(data: {
     console.error("记录访问日志失败:", error)
     // 访问日志失败不应影响主要功能
     return null
+  }
+}
+
+// 站点设置类型定义
+export interface SiteSettings {
+  id: number;
+  site_name: string;
+  show_download_link: boolean;
+  page_title: string;
+  meta_description: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// 获取站点设置
+export async function getSiteSettings(): Promise<SiteSettings | null> {
+  try {
+    if (!sqlClient) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    const result = await sqlClient`
+      SELECT * FROM site_settings 
+      ORDER BY id ASC 
+      LIMIT 1
+    `;
+    
+    if (Array.isArray(result) && result.length > 0) {
+      // 确保布尔值类型正确
+      const settings = result[0];
+      return {
+        ...settings,
+        show_download_link: Boolean(settings.show_download_link)
+      };
+    }
+    
+    // 如果没有记录，返回默认值
+    return null;
+  } catch (error) {
+    console.error("获取站点设置失败:", error)
+    throw error
+  }
+}
+
+// 更新站点设置
+export async function updateSiteSettings(data: {
+  site_name?: string;
+  show_download_link?: boolean;
+  page_title?: string;
+  meta_description?: string;
+}): Promise<SiteSettings | null> {
+  try {
+    if (!sqlClient) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    // 获取当前设置ID
+    const currentSettings = await getSiteSettings();
+    const id = currentSettings?.id || 1;
+    
+    console.log("更新站点设置ID:", id, "数据:", data);
+    
+    // 构建更新SQL
+    let updateFields = [];
+    let values: any[] = [];
+    
+    if (data.site_name !== undefined) {
+      updateFields.push("site_name = $1");
+      values.push(data.site_name);
+    }
+    
+    if (data.show_download_link !== undefined) {
+      updateFields.push("show_download_link = $" + (values.length + 1));
+      values.push(data.show_download_link);
+    }
+    
+    if (data.page_title !== undefined) {
+      updateFields.push("page_title = $" + (values.length + 1));
+      values.push(data.page_title);
+    }
+    
+    if (data.meta_description !== undefined) {
+      updateFields.push("meta_description = $" + (values.length + 1));
+      values.push(data.meta_description);
+    }
+    
+    if (updateFields.length === 0) {
+      return currentSettings;
+    }
+    
+    // 添加更新时间
+    updateFields.push("updated_at = CURRENT_TIMESTAMP");
+    
+    // 使用neon的标签模板语法构建查询
+    const query = `
+      UPDATE site_settings
+      SET ${updateFields.join(", ")}
+      WHERE id = ${id}
+      RETURNING *
+    `;
+    
+    // 根据提供的字段构建查询
+    let result;
+    if (data.site_name !== undefined && data.show_download_link !== undefined && 
+        data.page_title !== undefined && data.meta_description !== undefined) {
+      result = await sqlClient`
+        UPDATE site_settings
+        SET site_name = ${data.site_name}, 
+            show_download_link = ${data.show_download_link},
+            page_title = ${data.page_title},
+            meta_description = ${data.meta_description},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else if (data.site_name !== undefined) {
+      result = await sqlClient`
+        UPDATE site_settings
+        SET site_name = ${data.site_name},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else if (data.show_download_link !== undefined) {
+      result = await sqlClient`
+        UPDATE site_settings
+        SET show_download_link = ${data.show_download_link},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else if (data.page_title !== undefined) {
+      result = await sqlClient`
+        UPDATE site_settings
+        SET page_title = ${data.page_title},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    } else if (data.meta_description !== undefined) {
+      result = await sqlClient`
+        UPDATE site_settings
+        SET meta_description = ${data.meta_description},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `;
+    }
+    
+    console.log("更新站点设置结果:", result);
+    
+    if (Array.isArray(result) && result.length > 0) {
+      const settings = result[0];
+      return {
+        ...settings,
+        show_download_link: Boolean(settings.show_download_link)
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("更新站点设置失败:", error)
+    throw error
   }
 }

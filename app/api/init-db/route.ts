@@ -92,7 +92,32 @@ export async function GET() {
         );
       `;
       
-      // 4. 创建索引
+      // 4. 创建site_settings表
+      await sql`
+        CREATE TABLE IF NOT EXISTS site_settings (
+          id SERIAL PRIMARY KEY,
+          site_name VARCHAR(255) DEFAULT 'OMateShare',
+          show_download_link BOOLEAN DEFAULT true,
+          page_title VARCHAR(255) DEFAULT 'OMateShare',
+          meta_description TEXT DEFAULT '管理角色卡、知识库、事件书和提示注入',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `;
+      
+      // 5. 检查site_settings表是否有记录，没有则插入默认记录
+      const settingsExist = await sql`
+        SELECT COUNT(*) FROM site_settings
+      `;
+      
+      if (parseInt(settingsExist[0].count) === 0) {
+        await sql`
+          INSERT INTO site_settings (site_name, show_download_link, page_title, meta_description)
+          VALUES ('OMateShare', true, 'OMateShare', '管理角色卡、知识库、事件书和提示注入')
+        `;
+      }
+      
+      // 6. 创建索引
       await sql`CREATE INDEX IF NOT EXISTS idx_contents_content_type ON contents(content_type);`;
       await sql`CREATE INDEX IF NOT EXISTS idx_access_logs_content_id ON access_logs(content_id);`;
       await sql`CREATE INDEX IF NOT EXISTS idx_contents_created_at ON contents(created_at);`;

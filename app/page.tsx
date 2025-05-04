@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ContentCard } from "@/components/content-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download } from "lucide-react"
+import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings } from "lucide-react"
 import { ContentUploadForm } from "@/components/content-upload-form"
 import { LoginForm } from "@/components/login-form"
 import { ContentType } from "@/lib/db"
@@ -12,6 +12,7 @@ import { CharacterList } from "@/components/character-list"
 import { deleteCookie } from "@/lib/cookies"
 import QRCode from "qrcode"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { SiteSettingsForm } from "@/components/site-settings-form"
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ContentType | "all" | "characters">(ContentType.CHARACTER_CARD)
@@ -21,6 +22,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isMember, setIsMember] = useState(false)
   const [showUploadForm, setShowUploadForm] = useState(false)
+  const [showSettingsForm, setShowSettingsForm] = useState(false)
   const [editingContent, setEditingContent] = useState<any>(null)
   const [dbAvailable, setDbAvailable] = useState(true)
   const [showLoginForm, setShowLoginForm] = useState(false)
@@ -34,6 +36,19 @@ export default function Home() {
     hasMemberKey: false,
     hasAdminKey: false,
     allowPublicAccess: false
+  })
+  
+  // 站点配置状态
+  const [siteSettings, setSiteSettings] = useState<{
+    site_name: string;
+    show_download_link: boolean;
+    page_title: string;
+    meta_description: string;
+  }>({
+    site_name: "OMateShare",
+    show_download_link: true,
+    page_title: "OMateShare",
+    meta_description: "管理角色卡、知识库、事件书和提示注入"
   })
   
   // 二维码相关状态
@@ -61,15 +76,39 @@ export default function Home() {
     
     fetchConfig()
   }, [])
+  
+  // 获取站点设置
+  useEffect(() => {
+    const fetchSiteSettings = async () => {
+      try {
+        const response = await fetch("/api/site-settings")
+        if (response.ok) {
+          const settings = await response.json()
+          setSiteSettings(settings)
+          
+          // 更新页面标题
+          if (settings.page_title) {
+            document.title = settings.page_title
+          }
+        }
+      } catch (error) {
+        console.error("获取站点设置失败:", error)
+      }
+    }
+    
+    fetchSiteSettings()
+  }, [])
 
   // 更新版权信息
   useEffect(() => {
     const hostname = window.location.hostname;
     const copyrightEl = document.getElementById('domainCopyright');
     if (copyrightEl) {
-      copyrightEl.textContent = `© ${hostname} All Rights Reserved`;
+      // 如果有设置网站名称，则使用网站名称，否则使用域名
+      const displayName = siteSettings.site_name || hostname || '';
+      copyrightEl.textContent = `© ${displayName} All Rights Reserved`;
     }
-  }, []);
+  }, [siteSettings.site_name]);
 
   // 检查是否为管理员
   useEffect(() => {
@@ -296,6 +335,12 @@ export default function Home() {
     setShowUploadForm(true)
   }
 
+  // 处理显示上传表单
+  const handleShowUploadForm = () => {
+    setEditingContent(null)
+    setShowUploadForm(true)
+  }
+
   // 处理上传成功
   const handleUploadSuccess = () => {
     setShowUploadForm(false)
@@ -336,6 +381,44 @@ export default function Home() {
     fetchContents()
   }
 
+  // 显示设置表单
+  const handleShowSettingsForm = () => {
+    setShowSettingsForm(true);
+  }
+
+  // 处理设置成功
+  const handleSettingsSuccess = () => {
+    setShowSettingsForm(false);
+
+    // 重新加载站点设置
+    const fetchSiteSettings = async () => {
+      try {
+        const response = await fetch("/api/site-settings")
+        if (response.ok) {
+          const settings = await response.json()
+          setSiteSettings(settings)
+          
+          // 更新页面标题
+          if (settings.page_title) {
+            document.title = settings.page_title
+          }
+          
+          // 更新版权信息
+          const hostname = window.location.hostname;
+          const copyrightEl = document.getElementById('domainCopyright');
+          if (copyrightEl) {
+            const displayName = settings.site_name || hostname || '';
+            copyrightEl.textContent = `© ${displayName} All Rights Reserved`;
+          }
+        }
+      } catch (error) {
+        console.error("获取站点设置失败:", error)
+      }
+    }
+    
+    fetchSiteSettings()
+  }
+
   // 如果需要登录且未登录，或者显示登录表单，则显示登录表单
   if ((configState.hasMemberKey && !isMember && !isAdmin) || showLoginForm) {
     return (
@@ -364,6 +447,27 @@ export default function Home() {
     )
   }
 
+  // 如果正在显示设置表单
+  if (showSettingsForm) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
+        <div className="container mx-auto py-12 px-4">
+          <div className="flex flex-col items-center">
+            <h1 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+              网站设置
+            </h1>
+            <div className="w-full max-w-3xl">
+              <SiteSettingsForm
+                onSuccess={handleSettingsSuccess}
+                onCancel={() => setShowSettingsForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // 如果正在显示上传表单
   if (showUploadForm) {
     return (
@@ -381,6 +485,7 @@ export default function Home() {
                   setEditingContent(null)
                 }}
                 initialData={editingContent}
+                defaultContentType={typeof activeTab === 'string' && (activeTab !== 'all' && activeTab !== 'characters') ? activeTab as ContentType : undefined}
               />
             </div>
           </div>
@@ -392,20 +497,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white flex flex-col">
       <div className="container mx-auto py-8 px-4 flex-grow">
-        <div className="mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div className="flex items-end">
-            <h1 className="text-3xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
-              OMateShare
+            <h1 className="text-3xl font-bold mb-4 md:mb-0 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+              {siteSettings.site_name || "OMateShare"}
             </h1>
-            <a 
-              href="https://help.omate.org/#%E4%B8%8B%E8%BD%BD" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200 flex items-center ml-4 mb-6"
-            >
-              <Download className="h-4 w-4 mr-1" />
-              下载 OMate
-            </a>
+            
+            {/* 下载OMate链接，受站点设置控制 */}
+            {siteSettings.show_download_link && (
+              <a 
+                href="https://help.omate.org/#%E4%B8%8B%E8%BD%BD" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200 flex items-center ml-4 mb-1"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                下载 OMate
+              </a>
+            )}
           </div>
 
           {!dbAvailable && (
@@ -429,14 +538,21 @@ export default function Home() {
               <TabsTrigger value={ContentType.EVENT_BOOK}>事件书</TabsTrigger>
               <TabsTrigger value={ContentType.STORY_BOOK}>故事书</TabsTrigger>
               <TabsTrigger value={ContentType.PROMPT_INJECTION}>注入提示词</TabsTrigger>
+              <TabsTrigger value={ContentType.OTHER}>其他</TabsTrigger>
             </TabsList>
             
             <div className="flex gap-2">
               {isAdmin && (
-                <Button onClick={() => setShowUploadForm(true)} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white">
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  上传内容
-                </Button>
+                <>
+                  <Button onClick={handleShowUploadForm} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white">
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    上传内容
+                  </Button>
+                  <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white">
+                    <Settings className="mr-2 h-4 w-4" />
+                    设置
+                  </Button>
+                </>
               )}
               {/* <Button 
                 variant="outline" 
@@ -512,6 +628,10 @@ export default function Home() {
             {renderContentGrid()}
           </TabsContent>
           
+          <TabsContent value={ContentType.OTHER} className="mt-0">
+            {renderContentGrid()}
+          </TabsContent>
+          
           <TabsContent value="characters" className="mt-0">
             <CharacterList />
           </TabsContent>
@@ -544,7 +664,9 @@ export default function Home() {
       <footer className="mt-auto py-8 px-4 text-center text-gray-400 text-sm bg-gradient-to-b from-transparent to-gray-900 w-full">
         <div className="max-w-3xl mx-auto border-t border-gray-800 pt-8">
           <p>
-            <span id="domainCopyright" className="text-gray-400">&Copy; All Rights Reserved</span> · Powered By <a href="https://github.com/easychen/omateshare" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 transition-colors">OMateShare</a>
+            <span id="domainCopyright" className="text-gray-400">© All Rights Reserved</span>
+            {/* 页脚的OMateShare链接始终显示，不受站点设置控制 */}
+            · Powered By <a href="https://github.com/easychen/omateshare" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 transition-colors">OMateShare</a>
           </p>
           <p className="mb-2 mt-2 text-gray-500 ">请在严守当地法律法规和尊重知识产权的前提下使用OMateShare</p>
           <p className="text-gray-600 text-xs">OMate 不承担违规使用带来的任何连带责任</p>
@@ -581,7 +703,7 @@ export default function Home() {
         <div className="text-center py-12">
           <p className="text-gray-400 mb-4">暂无内容</p>
           {isAdmin && (
-            <Button onClick={() => setShowUploadForm(true)} variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
+            <Button onClick={handleShowUploadForm} variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
               <span>上传新内容</span>
             </Button>
           )}

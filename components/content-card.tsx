@@ -183,86 +183,103 @@ export function ContentCard({ content, onEdit, onDelete, isAdmin }: ContentCardP
   }
 
   return (
-    <Card
-      className={`overflow-hidden relative group border-0 rounded-lg bg-gradient-to-b ${styles.bgGradient} shadow-lg transition-all duration-300 hover:${styles.hoverShadow} hover:scale-[1.02]`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className="relative aspect-[3/4] overflow-hidden">
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10"
-          style={{ opacity: isHovered ? 0.9 : 0.7 }}
-        />
-        {shouldShowImage() && (
-          <img
-            src={content.thumbnail_url}
-            alt={content.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e) => {
-              // 图片加载失败时移除图片
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        )}
-
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
-          <div className="mb-1 text-xs font-medium text-gray-300">{getTypeLabel()}</div>
-          <h3 className="text-xl font-bold text-white mb-1">{content.name}</h3>
-          <p className="text-sm text-gray-200 line-clamp-2 mb-2">{content.description}</p>
-        </div>
-      </div>
-
-      <div
-        className={`absolute top-2 right-2 flex gap-2 z-20 transition-opacity duration-300 ${
-          isHovered ? "opacity-100" : "opacity-0"
-        }`}
+    <Link href={`/view/${content.id}`} className="block">
+      <Card
+        className={`overflow-hidden relative group border-0 rounded-lg bg-gradient-to-b ${styles.bgGradient} shadow-lg transition-all duration-300 hover:${styles.hoverShadow} hover:scale-[1.02]`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <Link href={`/view/${content.id}`}>
-          <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-black/50 hover:bg-blue-600 text-white">
+        <div className="relative aspect-[3/4] overflow-hidden">
+          <div
+            className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10"
+            style={{ opacity: isHovered ? 0.9 : 0.7 }}
+          />
+          {shouldShowImage() && (
+            <img
+              src={content.thumbnail_url}
+              alt={content.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              onError={(e) => {
+                // 图片加载失败时移除图片
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          )}
+
+          <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+            <div className="mb-1 text-xs font-medium text-gray-300">{getTypeLabel()}</div>
+            <h3 className="text-xl font-bold text-white mb-1">{content.name}</h3>
+            <p className="text-sm text-gray-200 line-clamp-2 mb-2">{content.description}</p>
+          </div>
+        </div>
+
+        <div
+          className={`absolute top-2 right-2 flex gap-2 z-20 transition-opacity duration-300 ${
+            isHovered ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8 rounded-full bg-black/50 hover:bg-blue-600 text-white"
+            onClick={(e) => {
+              e.preventDefault(); // 阻止Link的导航
+              window.location.href = `/view/${content.id}`;
+            }}
+          >
             <Eye className="h-4 w-4" />
             <span className="sr-only">查看</span>
           </Button>
-        </Link>
 
-        {isAdmin && (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-full bg-black/50 hover:bg-green-600 text-white"
-              onClick={onEdit}
-            >
-              <Edit2 className="h-4 w-4" />
-              <span className="sr-only">编辑</span>
-            </Button>
+          {isAdmin && (
+            <>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full bg-black/50 hover:bg-green-600 text-white"
+                onClick={(e) => {
+                  e.preventDefault(); // 阻止Link的导航
+                  onEdit();
+                }}
+              >
+                <Edit2 className="h-4 w-4" />
+                <span className="sr-only">编辑</span>
+              </Button>
 
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 rounded-full bg-black/50 hover:bg-red-600 text-white"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">删除</span>
-            </Button>
-          </>
-        )}
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full bg-black/50 hover:bg-red-600 text-white"
+                onClick={(e) => {
+                  e.preventDefault(); // 阻止Link的导航
+                  onDelete();
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">删除</span>
+              </Button>
+            </>
+          )}
 
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-8 w-8 rounded-full bg-black/50 hover:bg-amber-600 text-white"
-          onClick={handleDownload}
-        >
-          <Download className="h-4 w-4" />
-          <span className="sr-only">下载</span>
-        </Button>
-      </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 rounded-full bg-black/50 hover:bg-amber-600 text-white"
+            onClick={(e) => {
+              e.preventDefault(); // 阻止Link的导航
+              handleDownload(e);
+            }}
+          >
+            <Download className="h-4 w-4" />
+            <span className="sr-only">下载</span>
+          </Button>
+        </div>
 
-      {/* 悬停时的发光边框效果 */}
-      <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        <div className={`absolute inset-0 rounded-lg border ${styles.hoverBorder}`}></div>
-      </div>
-    </Card>
+        {/* 悬停时的发光边框效果 */}
+        <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          <div className={`absolute inset-0 rounded-lg border ${styles.hoverBorder}`}></div>
+        </div>
+      </Card>
+    </Link>
   )
 }

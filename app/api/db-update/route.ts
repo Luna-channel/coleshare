@@ -2,112 +2,118 @@ import { type NextRequest, NextResponse } from "next/server"
 import { withAdminAuth } from "@/lib/auth"
 import { neon } from "@neondatabase/serverless"
 
-// 添加新的内容类型到数据库
+// 数据库更新API - 仅管理员可访问
 export const GET = withAdminAuth(async (req: NextRequest) => {
   try {
-    // 检查环境变量是否存在
+    // 检查数据库连接
     if (!process.env.DATABASE_URL) {
-      return NextResponse.json(
-        { error: "DATABASE_URL 环境变量未设置" },
-        { status: 500 }
-      )
+      return NextResponse.json({ 
+        success: false, 
+        message: 'DATABASE_URL 环境变量未设置' 
+      }, { status: 500 });
     }
 
     // 初始化数据库连接
-    const sql = neon(process.env.DATABASE_URL)
-
-    let result = {}
-    let error = null
-
-    // 尝试更新枚举
+    const sql = neon(process.env.DATABASE_URL);
+    
+    // 更新site_settings表
+    const updateResults = [];
+    
     try {
-      console.log("开始更新内容类型枚举...")
-
-      // 检查content_type是否已经包含story_book
-      const typeCheck = await sql`
+      // 1. 检查site_settings表是否存在
+      const tableExists = await sql`
         SELECT EXISTS (
-          SELECT 1 FROM pg_type
-          JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid
-          WHERE pg_type.typname = 'content_type'
-          AND pg_enum.enumlabel = 'story_book'
-        ) as has_story_book;
-      `
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public'
+          AND table_name = 'site_settings'
+        ) as exists
+      `;
       
-      const hasStoryBook = typeCheck[0]?.has_story_book
-      
-      if (hasStoryBook) {
-        return NextResponse.json(
-          { message: "story_book 类型已存在，无需更新" },
-          { status: 200 }
-        )
+      // 如果表不存在，创建site_settings表
+      if (!tableExists[0]?.exists) {
+        updateResults.push("创建site_settings表");
+        
+        await sql`
+          CREATE TABLE IF NOT EXISTS site_settings (
+            id SERIAL PRIMARY KEY,
+            site_name VARCHAR(255) DEFAULT 'OMateShare',
+            show_download_link BOOLEAN DEFAULT true,
+            page_title VARCHAR(255) DEFAULT 'OMateShare',
+            meta_description TEXT DEFAULT '管理角色卡、知识库、事件书和提示注入',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          );
+        `;
+        
+        // 插入默认记录
+        await sql`
+          INSERT INTO site_settings (site_name, show_download_link, page_title, meta_description)
+          VALUES ('OMateShare', true, 'OMateShare', '管理角色卡、知识库、事件书和提示注入')
+        `;
+      } else {
+        updateResults.push("site_settings表已存在，无需创建");
       }
-
-      // 1. 创建新的枚举类型
-      await sql`
-        CREATE TYPE content_type_new AS ENUM (
-          'character_card', 'knowledge_base', 'event_book', 'prompt_injection', 'story_book'
-        );
-      `
-      console.log("创建新枚举类型成功")
-
-      // 2. 更新表使用新的枚举类型
-      await sql`
-        ALTER TABLE contents 
-        ALTER COLUMN content_type TYPE content_type_new 
-        USING content_type::text::content_type_new;
-      `
-      console.log("更新表列类型成功")
-
-      // 3. 删除旧的枚举类型并重命名新的
-      await sql`
-        DROP TYPE content_type;
-      `
-      console.log("删除旧枚举类型成功")
-
-      await sql`
-        ALTER TYPE content_type_new RENAME TO content_type;
-      `
-      console.log("重命名新枚举类型成功")
-
-      result = { success: true, message: "内容类型枚举更新成功！现在可以使用story_book类型了" }
-    } catch (err) {
-      console.error("更新内容类型枚举失败:", err)
-      error = err
       
-      // 尝试另一种更新方法（如果第一种失败）
-      try {
-        console.log("尝试使用ALTER TYPE添加值...")
+      // 2. 检查content_type是否包含'other'类型
+      const otherTypeExists = await sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_type t
+          JOIN pg_enum e ON t.oid = e.enumtypid
+          WHERE t.typname = 'content_type'
+          AND e.enumlabel = 'other'
+        ) as exists
+      `;
+      
+      if (!otherTypeExists[0]?.exists) {
+        updateResults.push("添加'other'类型到content_type枚举");
+        
+        await sql`
+          ALTER TYPE content_type ADD VALUE IF NOT EXISTS 'other';
+        `;
+      } else {
+        updateResults.push("content_type枚举已包含'other'类型");
+      }
+      
+      // 3. 检查content_type是否包含'story_book'类型
+      const storyBookTypeExists = await sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_type t
+          JOIN pg_enum e ON t.oid = e.enumtypid
+          WHERE t.typname = 'content_type'
+          AND e.enumlabel = 'story_book'
+        ) as exists
+      `;
+      
+      if (!storyBookTypeExists[0]?.exists) {
+        updateResults.push("添加'story_book'类型到content_type枚举");
+        
         await sql`
           ALTER TYPE content_type ADD VALUE IF NOT EXISTS 'story_book';
-        `
-        result = { 
-          success: true, 
-          message: "使用ALTER TYPE成功添加了story_book类型",
-          fallback: true
-        }
-        error = null
-      } catch (altErr) {
-        console.error("第二种方法也失败:", altErr)
-        error = error || altErr
+        `;
+      } else {
+        updateResults.push("content_type枚举已包含'story_book'类型");
       }
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: '数据库更新完成',
+        updates: updateResults
+      });
+    } catch (err) {
+      console.error('执行数据库更新失败:', err);
+      return NextResponse.json({ 
+        success: false, 
+        message: '执行数据库更新失败',
+        error: err instanceof Error ? err.message : String(err)
+      }, { status: 500 });
     }
-
-    if (error) {
-      return NextResponse.json(
-        { 
-          error: "更新内容类型枚举失败", 
-          details: error instanceof Error ? error.message : String(error) 
-        },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json(result, { status: 200 })
-  } catch (err) {
-    console.error("处理请求失败:", err)
-    return NextResponse.json(
-      { error: "处理请求失败", details: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    )
+    
+  } catch (error) {
+    console.error('数据库更新失败:', error);
+    return NextResponse.json({ 
+      success: false, 
+      message: '数据库更新失败',
+      error: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
-}) 
+}); 

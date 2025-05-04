@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -11,17 +11,20 @@ import { ContentType } from "@/lib/db"
 import { Upload, X, Save } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 interface ContentUploadFormProps {
   onSuccess: () => void
   onCancel: () => void
   initialData?: any
+  defaultContentType?: ContentType
 }
 
-export function ContentUploadForm({ onSuccess, onCancel, initialData }: ContentUploadFormProps) {
+export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultContentType }: ContentUploadFormProps) {
   const [name, setName] = useState(initialData?.name || "")
   const [description, setDescription] = useState(initialData?.description || "")
-  const [contentType, setContentType] = useState<ContentType>(initialData?.content_type || ContentType.CHARACTER_CARD)
+  const [contentType, setContentType] = useState<ContentType>(initialData?.content_type || defaultContentType || ContentType.CHARACTER_CARD)
   const [file, setFile] = useState<File | null>(null)
   const [tagInput, setTagInput] = useState(initialData?.tags ? initialData.tags.join(",") : "")
   const [isLoading, setIsLoading] = useState(false)
@@ -31,15 +34,25 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData }: ContentU
   const [storyBooks, setStoryBooks] = useState<any[]>([])
   const [selectedStoryBooks, setSelectedStoryBooks] = useState<string[]>([])
   
+  // 新增状态
+  const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false)
+  const [commercial, setCommercial] = useState(false)
+  const [redistribution, setRedistribution] = useState(true)
+  const [derivative, setDerivative] = useState(true)
+  const [shareAlike, setShareAlike] = useState(true)
+  const [attribution, setAttribution] = useState(true)
+  const introRef = useRef<HTMLTextAreaElement>(null)
+  
   const isEditing = !!initialData
 
   // 内容类型选项
   const contentTypeOptions = [
     { value: ContentType.CHARACTER_CARD, label: "角色卡", accept: ".png" },
-    { value: ContentType.KNOWLEDGE_BASE, label: "知识库", accept: ".json" },
+    { value: ContentType.KNOWLEDGE_BASE, label: "知识库", accept: ".json,.txt" },
     { value: ContentType.EVENT_BOOK, label: "事件书", accept: ".json" },
     { value: ContentType.PROMPT_INJECTION, label: "提示注入", accept: ".json" },
     { value: ContentType.STORY_BOOK, label: "故事书", accept: ".json" },
+    { value: ContentType.OTHER, label: "其他", accept: ".json,.txt,.pdf,.md,.doc,.docx,.csv,.xls,.xlsx,.zip,.rar,.mp3,.mp4,.wav,.jpg,.jpeg,.gif,.png" },
   ]
   
   // 获取可用的故事书列表
@@ -321,6 +334,47 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData }: ContentU
     }
   }
 
+  // 生成授权文本
+  const generateLicenseText = () => {
+    let text = "【授权说明】\n"
+    text += `商业使用: ${commercial ? "是" : "否"}\n`
+    text += `原作者署名: ${attribution ? "是" : "否"}\n`
+    text += `二次分发: ${redistribution ? "是" : "否"}\n`
+    text += `二次创作: ${derivative ? "是" : "否"}\n`
+    
+    if (derivative) {
+      text += `衍生作品采用相同授权: ${shareAlike ? "是" : "否"}\n`
+    }
+    
+    return text
+  }
+  
+  // 插入授权文本到简介
+  const insertLicenseText = () => {
+    const licenseText = generateLicenseText()
+    const textArea = introRef.current
+    
+    if (textArea) {
+      const startPos = textArea.selectionStart
+      const endPos = textArea.selectionEnd
+      const currentValue = intro
+      
+      const newValue = currentValue.substring(0, startPos) + licenseText + currentValue.substring(endPos)
+      setIntro(newValue)
+      
+      // 设置光标位置到插入文本后
+      setTimeout(() => {
+        textArea.focus()
+        textArea.setSelectionRange(startPos + licenseText.length, startPos + licenseText.length)
+      }, 0)
+    } else {
+      // 如果无法获取光标位置，则添加到最后
+      setIntro(intro + (intro.length > 0 ? "\n\n" : "") + licenseText)
+    }
+    
+    setIsLicenseDialogOpen(false)
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -336,41 +390,50 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData }: ContentU
               </label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="内容名称" required />
             </div>
-
-            <div className="space-y-2">
-              <label htmlFor="contentType" className="text-sm font-medium">
-                内容类型
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {contentTypeOptions.map((option) => (
-                  <Button
-                    key={option.value}
-                    type="button"
-                    variant={contentType === option.value ? "default" : "outline"}
-                    onClick={() => setContentType(option.value as ContentType)}
-                    disabled={isEditing} // 编辑模式下不允许修改内容类型
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="contentType" className="text-sm font-medium">
+              内容类型
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+              {contentTypeOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={contentType === option.value ? "default" : "outline"}
+                  onClick={() => setContentType(option.value as ContentType)}
+                  disabled={isEditing} // 编辑模式下不允许修改内容类型
+                  className="w-full"
+                >
+                  {option.label}
+                </Button>
+              ))}
             </div>
           </div>
           
-          {contentType === ContentType.CHARACTER_CARD && (
-            <div className="space-y-2">
-              <label htmlFor="intro" className="text-sm font-medium">
-                介绍
-              </label>
-              <Textarea
-                id="intro"
-                value={intro}
-                onChange={(e) => setIntro(e.target.value)}
-                placeholder="角色介绍"
-                rows={3}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <label htmlFor="intro" className="text-sm font-medium">
+              简介
+            </label>
+            <Textarea
+              id="intro"
+              ref={introRef}
+              value={intro}
+              onChange={(e) => setIntro(e.target.value)}
+              placeholder="内容简介，包括但不限于：角色介绍、作者信息、适用模型等"
+              rows={3}
+            />
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsLicenseDialogOpen(true)}
+              className="mt-1"
+            >
+              生成授权说明
+            </Button>
+          </div>
 
           <div className="space-y-2">
             <label htmlFor="tags" className="text-sm font-medium">
@@ -475,6 +538,94 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData }: ContentU
           </Button>
         </CardFooter>
       </form>
+      
+      {/* 授权说明弹窗 */}
+      <Dialog open={isLicenseDialogOpen} onOpenChange={setIsLicenseDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>授权说明设置</DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center justify-between">
+              <Label>是否可商用</Label>
+              <RadioGroup value={commercial ? "yes" : "no"} onValueChange={(v) => setCommercial(v === "yes")} className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="commercial-yes" value="yes" />
+                  <Label htmlFor="commercial-yes">是</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="commercial-no" value="no" />
+                  <Label htmlFor="commercial-no">否</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label>是否需要原作者署名</Label>
+              <RadioGroup value={attribution ? "yes" : "no"} onValueChange={(v) => setAttribution(v === "yes")} className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="attribution-yes" value="yes" />
+                  <Label htmlFor="attribution-yes">是</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="attribution-no" value="no" />
+                  <Label htmlFor="attribution-no">否</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label>是否可二次分发</Label>
+              <RadioGroup value={redistribution ? "yes" : "no"} onValueChange={(v) => setRedistribution(v === "yes")} className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="redistribution-yes" value="yes" />
+                  <Label htmlFor="redistribution-yes">是</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="redistribution-no" value="no" />
+                  <Label htmlFor="redistribution-no">否</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label>是否可二次创作</Label>
+              <RadioGroup value={derivative ? "yes" : "no"} onValueChange={(v) => setDerivative(v === "yes")} className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="derivative-yes" value="yes" />
+                  <Label htmlFor="derivative-yes">是</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem id="derivative-no" value="no" />
+                  <Label htmlFor="derivative-no">否</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            {derivative && (
+              <div className="flex items-center justify-between">
+                <Label>二创是否需采用同样授权</Label>
+                <RadioGroup value={shareAlike ? "yes" : "no"} onValueChange={(v) => setShareAlike(v === "yes")} className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem id="sharealike-yes" value="yes" />
+                    <Label htmlFor="sharealike-yes">是</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem id="sharealike-no" value="no" />
+                    <Label htmlFor="sharealike-no">否</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLicenseDialogOpen(false)}>取消</Button>
+            <Button onClick={insertLicenseText}>插入授权说明</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
