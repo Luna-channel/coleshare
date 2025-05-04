@@ -434,15 +434,15 @@ export default function Home() {
   if ((configState.hasMemberKey && !isMember && !isAdmin) || showLoginForm) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
-        <div className="container mx-auto py-12 px-4">
+        <div className="container mx-auto py-8 sm:py-12 px-4">
           <div className="flex flex-col items-center justify-center">
-            <h1 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
               OMateShare
             </h1>
             {!configState.hasAdminKey && (
-              <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-lg mb-6 max-w-md">
+              <div className="bg-red-500/20 border border-red-500 text-white p-3 sm:p-4 rounded-lg mb-5 sm:mb-6 max-w-md w-full text-sm sm:text-base">
                 <p className="font-medium">警告: 未设置管理员密钥 (ADMIN_KEY)</p>
-                <p className="text-sm mt-2">请在环境变量中设置 ADMIN_KEY 以启用管理功能。</p>
+                <p className="text-xs sm:text-sm mt-1 sm:mt-2">请在环境变量中设置 ADMIN_KEY 以启用管理功能。</p>
               </div>
             )}
             <div className="w-full max-w-md">
@@ -462,9 +462,9 @@ export default function Home() {
   if (showSettingsForm) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
-        <div className="container mx-auto py-12 px-4">
+        <div className="container mx-auto py-6 sm:py-12 px-3 sm:px-4">
           <div className="flex flex-col items-center">
-            <h1 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
               网站设置
             </h1>
             <div className="w-full max-w-3xl">
@@ -483,9 +483,9 @@ export default function Home() {
   if (showUploadForm) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white">
-        <div className="container mx-auto py-12 px-4">
+        <div className="container mx-auto py-6 sm:py-12 px-3 sm:px-4">
           <div className="flex flex-col items-center">
-            <h1 className="text-3xl font-bold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
               {editingContent ? "编辑内容" : "上传新内容"}
             </h1>
             <div className="w-full max-w-3xl">
@@ -507,10 +507,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black to-gray-900 text-white flex flex-col">
-      <div className="container mx-auto py-8 px-4 flex-grow">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <div className="flex items-end">
-            <h1 className="text-3xl font-bold mb-4 md:mb-0 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+      <div className="container mx-auto py-4 sm:py-8 px-3 sm:px-4 flex-grow">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-end mb-4 sm:mb-0 w-full sm:w-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-0 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400 text-center sm:text-left">
               {siteSettings.site_name || "OMateShare"}
             </h1>
             
@@ -520,7 +520,7 @@ export default function Home() {
                 href="https://help.omate.org/#%E4%B8%8B%E8%BD%BD" 
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200 flex items-center ml-4 mb-1"
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors duration-200 flex items-center justify-center sm:justify-start sm:ml-4 sm:mb-1"
               >
                 <Download className="h-4 w-4 mr-1" />
                 下载 OMate
@@ -529,9 +529,9 @@ export default function Home() {
           </div>
 
           {!dbAvailable && (
-            <div className="bg-amber-500/20 border border-amber-500 text-white p-4 rounded-lg mb-6">
+            <div className="bg-amber-500/20 border border-amber-500 text-white p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 w-full sm:w-auto text-sm sm:text-base">
               <p>数据库连接不可用。请检查环境变量配置。</p>
-              <p className="text-sm mt-2">您仍然可以使用角色卡编辑器功能，但内容管理功能将不可用。</p>
+              <p className="text-xs sm:text-sm mt-1 sm:mt-2">您仍然可以使用角色卡编辑器功能，但内容管理功能将不可用。</p>
             </div>
           )}
         </div>
@@ -540,27 +540,30 @@ export default function Home() {
           defaultValue="all"
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as ContentType | "all" | "characters")}
+          className="w-full"
         >
-          <div className="flex justify-between items-center mb-8">
-            <TabsList>
-              <TabsTrigger value="all">全部</TabsTrigger>
-              <TabsTrigger value={ContentType.CHARACTER_CARD}>角色卡</TabsTrigger>
-              <TabsTrigger value={ContentType.KNOWLEDGE_BASE}>知识库</TabsTrigger>
-              <TabsTrigger value={ContentType.EVENT_BOOK}>事件书</TabsTrigger>
-              <TabsTrigger value={ContentType.STORY_BOOK}>故事书</TabsTrigger>
-              <TabsTrigger value={ContentType.PROMPT_INJECTION}>注入提示词</TabsTrigger>
-              <TabsTrigger value={ContentType.OTHER}>其他</TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <div className="w-full sm:w-auto overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 no-scrollbar">
+              <TabsList className="h-auto sm:h-10 flex flex-nowrap sm:flex-wrap min-w-max sm:min-w-0 bg-gray-800/60">
+                <TabsTrigger value="all" className="px-3 py-1.5 sm:py-2">全部</TabsTrigger>
+                <TabsTrigger value={ContentType.CHARACTER_CARD} className="px-3 py-1.5 sm:py-2">角色卡</TabsTrigger>
+                <TabsTrigger value={ContentType.KNOWLEDGE_BASE} className="px-3 py-1.5 sm:py-2">知识库</TabsTrigger>
+                <TabsTrigger value={ContentType.EVENT_BOOK} className="px-3 py-1.5 sm:py-2">事件书</TabsTrigger>
+                <TabsTrigger value={ContentType.STORY_BOOK} className="px-3 py-1.5 sm:py-2">故事书</TabsTrigger>
+                <TabsTrigger value={ContentType.PROMPT_INJECTION} className="px-3 py-1.5 sm:py-2">注入提示词</TabsTrigger>
+                <TabsTrigger value={ContentType.OTHER} className="px-3 py-1.5 sm:py-2">其他</TabsTrigger>
+              </TabsList>
+            </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 justify-end">
               {isAdmin && (
                 <>
-                  <Button onClick={handleShowUploadForm} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white">
-                    <PlusIcon className="mr-2 h-4 w-4" />
+                  <Button onClick={handleShowUploadForm} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base px-2 sm:px-4">
+                    <PlusIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     上传内容
                   </Button>
-                  <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white">
-                    <Settings className="mr-2 h-4 w-4" />
+                  <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-base px-2 sm:px-4">
+                    <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     设置
                   </Button>
                 </>
@@ -574,10 +577,10 @@ export default function Home() {
               </Button> */}
               <Button 
                 variant="outline" 
-                className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-3"
+                className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-2 sm:px-3 text-sm sm:text-base"
                 onClick={showQRCode}
               >
-                <QrCodeIcon className="h-4 w-4" />
+                <QrCodeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
               
               {/* 根据配置状态和登录状态显示不同的按钮 */}
@@ -585,30 +588,30 @@ export default function Home() {
                 // 管理员已登录，显示登出按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4" 
                   onClick={handleLogout}
                 >
-                  <LogOutIcon className="mr-2 h-4 w-4" />
+                  <LogOutIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   登出
                 </Button>
               ) : configState.hasAdminKey && (!configState.hasMemberKey || !isMember) ? (
                 // 有管理员密钥但未登录，显示管理员登录按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700"
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4"
                   onClick={() => setShowLoginForm(true)}
                 >
-                  <Lock className="mr-2 h-4 w-4" />
+                  <Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   管理员登录
                 </Button>
               ) : isMember && !configState.allowPublicAccess ? (
                 // 成员已登录，显示登出按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4" 
                   onClick={handleLogout}
                 >
-                  <LogOutIcon className="mr-2 h-4 w-4" />
+                  <LogOutIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                   登出
                 </Button>
               ) : null}
@@ -650,7 +653,7 @@ export default function Home() {
 
         {/* 二维码对话框 */}
         <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="w-[90vw] max-w-md mx-auto">
             <DialogHeader>
               <DialogTitle>角色卡访问二维码</DialogTitle>
               <DialogDescription>
@@ -658,11 +661,11 @@ export default function Home() {
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex flex-col items-center justify-center py-4">
+            <div className="flex flex-col items-center justify-center py-3 sm:py-4">
               {qrCodeDataUrl && (
-                <img src={qrCodeDataUrl} alt="QR Code" className="w-64 h-64" />
+                <img src={qrCodeDataUrl} alt="QR Code" className="w-52 h-52 sm:w-64 sm:h-64" />
               )}
-              <p className="mt-4 text-sm text-center text-gray-500">
+              <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-center text-gray-500">
                 扫描二维码添加角色列表到发现页面
               </p>
               
@@ -672,14 +675,14 @@ export default function Home() {
       </div>
       
       {/* 页脚 */}
-      <footer className="mt-auto py-8 px-4 text-center text-gray-400 text-sm bg-gradient-to-b from-transparent to-gray-900 w-full">
-        <div className="max-w-3xl mx-auto border-t border-gray-800 pt-8">
+      <footer className="mt-auto py-6 sm:py-8 px-3 sm:px-4 text-center text-gray-400 text-xs sm:text-sm bg-gradient-to-b from-transparent to-gray-900 w-full">
+        <div className="max-w-3xl mx-auto border-t border-gray-800 pt-6 sm:pt-8">
           <p>
             <span id="domainCopyright" className="text-gray-400">© All Rights Reserved</span>
             {/* 页脚的OMateShare链接始终显示，不受站点设置控制 */}
             · Powered By <a href="https://github.com/easychen/omateshare" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 transition-colors">OMateShare</a>
           </p>
-          <p className="mb-2 mt-2 text-gray-500 ">请在严守当地法律法规和尊重知识产权的前提下使用OMateShare</p>
+          <p className="mb-2 mt-2 text-gray-500 text-xs sm:text-sm">请在严守当地法律法规和尊重知识产权的前提下使用OMateShare</p>
           <p className="text-gray-600 text-xs">OMate 不承担违规使用带来的任何连带责任</p>
         </div>
       </footer>
@@ -723,7 +726,7 @@ export default function Home() {
     }
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
         {contents.map((content) => (
           <ContentCard
             key={content.id}
