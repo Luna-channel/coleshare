@@ -58,6 +58,9 @@ DATABASE_URL="postgres://username:password@your-neon-db-host/dbname"
 # Vercel Blob存储令牌
 BLOB_READ_WRITE_TOKEN="your-blob-token"
 
+# Vercel Blob存储前缀 (可选，用于多项目共享存储，默认为"oshare")
+BLOB_PREFIX="oshare"
+
 # 管理员访问令牌
 ADMIN_KEY="your-admin-token"
 
@@ -119,6 +122,7 @@ yarn dev
 |--------|------|------|
 | DATABASE_URL | NeonDB数据库连接字符串 | postgres://user:password@host:port/database |
 | BLOB_READ_WRITE_TOKEN | Vercel Blob存储读写令牌 | vercel_blob_rw_token123... |
+| BLOB_PREFIX | Vercel Blob存储前缀 (可选) | oshare |
 | ADMIN_KEY | 管理员访问令牌 | your_admin_token |
 | MEMBER_KEY | 会员访问令牌 (可选) | your_member_token |
 

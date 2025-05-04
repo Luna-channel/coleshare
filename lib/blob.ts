@@ -10,8 +10,8 @@ const contentTypeMap = {
   prompt_injection: "json",
 }
 
-// 存储前缀
-const STORAGE_PREFIX = "oshare/"
+// 从环境变量获取存储前缀，默认为"oshare/"
+const STORAGE_PREFIX = `${process.env.BLOB_PREFIX || "oshare"}/`
 
 // 生成jpg缩略图
 async function generateJpegThumbnail(file: File): Promise<File> {
@@ -113,15 +113,19 @@ export async function deleteFromBlob(url: string): Promise<boolean> {
   try {
     // 从URL中提取文件名（包含路径）
     const urlPath = new URL(url).pathname
-    const filename = urlPath.split('/').pop()
+    // 提取完整路径部分（包括前缀）
+    const pathParts = urlPath.split('/')
+    // 移除空字符串（URL开头的'/'导致的）
+    const validParts = pathParts.filter(part => part.length > 0)
     
-    if (!filename) {
+    if (validParts.length === 0) {
       throw new Error("无效的文件URL")
     }
 
-    // 使用URL中的完整路径提取文件名
-    console.log("尝试删除文件:", filename)
-    await del(filename)
+    // 使用URL中的完整路径
+    const fullPath = '/' + validParts.join('/')
+    console.log("尝试删除文件:", fullPath)
+    await del(fullPath)
     return true
   } catch (error) {
     console.error("文件删除失败:", error)
