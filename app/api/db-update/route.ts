@@ -147,6 +147,51 @@ export const GET = withAdminAuth(async (req: NextRequest) => {
         }
       }
       
+      // 5. 检查contents表是否存在sort_order字段
+      const sortOrderColumnExists = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.columns
+          WHERE table_schema = 'public'
+          AND table_name = 'contents'
+          AND column_name = 'sort_order'
+        ) as exists
+      `;
+      
+      if (!sortOrderColumnExists[0]?.exists) {
+        updateResults.push("向contents表添加sort_order字段");
+        
+        // 添加sort_order字段
+        await sql`
+          ALTER TABLE contents ADD COLUMN sort_order INTEGER;
+        `;
+        
+        // 为角色卡初始化排序值（按更新时间倒序）
+        // 获取所有角色卡，按更新时间倒序排列
+        const characterCards = await sql`
+          SELECT id FROM contents
+          WHERE content_type = 'character_card'
+          ORDER BY updated_at DESC
+        `;
+        
+        // 初始化排序值（从1开始）
+        let sortOrder = 1;
+        for (const card of characterCards) {
+          await sql`
+            UPDATE contents
+            SET sort_order = ${sortOrder}
+            WHERE id = ${card.id}
+          `;
+          sortOrder++;
+        }
+        
+        // 添加索引以优化排序查询
+        await sql`
+          CREATE INDEX IF NOT EXISTS idx_contents_sort_order ON contents(sort_order);
+        `;
+      } else {
+        updateResults.push("contents表已包含sort_order字段");
+      }
+      
       return NextResponse.json({ 
         success: true, 
         message: '数据库更新完成',

@@ -76,6 +76,7 @@ export async function GET() {
           thumbnail_url TEXT,
           metadata JSONB,
           tags TEXT[],
+          sort_order INTEGER,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
@@ -123,6 +124,7 @@ export async function GET() {
       await sql`CREATE INDEX IF NOT EXISTS idx_access_logs_content_id ON access_logs(content_id);`;
       await sql`CREATE INDEX IF NOT EXISTS idx_contents_created_at ON contents(created_at);`;
       await sql`CREATE INDEX IF NOT EXISTS idx_contents_updated_at ON contents(updated_at);`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_contents_sort_order ON contents(sort_order);`;
       
       return NextResponse.json({ 
         success: true, 

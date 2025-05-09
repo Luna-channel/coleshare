@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ContentCard } from "@/components/content-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings } from "lucide-react"
+import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings, ArrowUpDown, GripVertical } from "lucide-react"
 import { ContentUploadForm } from "@/components/content-upload-form"
 import { LoginForm } from "@/components/login-form"
 import { ContentType } from "@/lib/db"
@@ -26,6 +26,10 @@ export default function Home() {
   const [editingContent, setEditingContent] = useState<any>(null)
   const [dbAvailable, setDbAvailable] = useState(true)
   const [showLoginForm, setShowLoginForm] = useState(false)
+  const [isSorting, setIsSorting] = useState(false)
+  const [sortedContents, setSortedContents] = useState<any[]>([])
+  const [draggedItem, setDraggedItem] = useState<number | null>(null)
+  const [dragOverItem, setDragOverItem] = useState<number | null>(null)
   
   // 环境变量配置状态
   const [configState, setConfigState] = useState<{
@@ -430,6 +434,143 @@ export default function Home() {
     fetchSiteSettings()
   }
 
+  // 开始排序模式
+  const handleStartSorting = () => {
+    if (activeTab !== ContentType.CHARACTER_CARD) {
+      // 切换到角色卡标签
+      setActiveTab(ContentType.CHARACTER_CARD)
+    }
+    
+    // 复制当前内容到可排序列表
+    setSortedContents(
+      // 如果有排序值使用排序值，否则使用索引
+      contents.map((content, index) => ({
+        ...content,
+        sort_order: content.sort_order !== null ? content.sort_order : index
+      }))
+    )
+    setIsSorting(true)
+  }
+
+  // 取消排序
+  const handleCancelSorting = () => {
+    setIsSorting(false)
+    setSortedContents([])
+  }
+
+  // 保存排序
+  const handleSaveSorting = async () => {
+    try {
+      // 准备API请求数据
+      const items = sortedContents.map((content, index) => ({
+        id: content.id,
+        sort_order: index + 1 // 从1开始的排序值
+      }))
+
+      // 调用API保存排序
+      const response = await fetch("/api/contents/sort", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+        },
+        body: JSON.stringify({ items }),
+      })
+
+      if (!response.ok) {
+        throw new Error("保存排序失败")
+      }
+
+      // 退出排序模式
+      setIsSorting(false)
+      
+      // 重新加载内容
+      const fetchContents = async () => {
+        setIsLoading(true)
+        try {
+          const token = localStorage.getItem("adminToken") || localStorage.getItem("memberToken") || ""
+          const url = `/api/contents?type=${ContentType.CHARACTER_CARD}`
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          if (!response.ok) {
+            throw new Error("获取内容失败")
+          }
+          const data = await response.json()
+          setContents(data)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "获取内容失败")
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      fetchContents()
+      
+      // 移除成功提示
+      // alert("排序保存成功")
+    } catch (err) {
+      console.error("保存排序失败:", err)
+      alert(err instanceof Error ? err.message : "保存排序失败")
+    }
+  }
+
+  // 移动排序项
+  const moveItem = (fromIndex: number, toIndex: number) => {
+    // 确保索引在有效范围内
+    if (
+      fromIndex < 0 || 
+      fromIndex >= sortedContents.length || 
+      toIndex < 0 || 
+      toIndex >= sortedContents.length
+    ) {
+      return
+    }
+
+    // 复制数组并移动项目
+    const newItems = [...sortedContents]
+    const [movedItem] = newItems.splice(fromIndex, 1)
+    newItems.splice(toIndex, 0, movedItem)
+    
+    // 更新状态
+    setSortedContents(newItems)
+  }
+
+  // 向上移动项目
+  const moveItemUp = (index: number) => {
+    if (index > 0) {
+      moveItem(index, index - 1)
+    }
+  }
+
+  // 向下移动项目
+  const moveItemDown = (index: number) => {
+    if (index < sortedContents.length - 1) {
+      moveItem(index, index + 1)
+    }
+  }
+
+  // 处理拖动开始
+  const handleDragStart = (index: number) => {
+    setDraggedItem(index)
+  }
+
+  // 处理拖动结束
+  const handleDragEnd = () => {
+    if (draggedItem !== null && dragOverItem !== null && draggedItem !== dragOverItem) {
+      moveItem(draggedItem, dragOverItem)
+    }
+    setDraggedItem(null)
+    setDragOverItem(null)
+  }
+
+  // 处理拖动进入
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    setDragOverItem(index)
+  }
+
   // 如果需要登录且未登录，或者显示登录表单，则显示登录表单
   if ((configState.hasMemberKey && !isMember && !isAdmin) || showLoginForm) {
     return (
@@ -562,6 +703,29 @@ export default function Home() {
                     <PlusIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     上传内容
                   </Button>
+                  {isSorting ? (
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveSorting} className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4">
+                        保存排序
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={handleCancelSorting} 
+                        className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4"
+                      >
+                        取消
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={handleStartSorting} 
+                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base px-2 sm:px-4"
+                      disabled={activeTab !== ContentType.CHARACTER_CARD && activeTab !== "all" && contents.length === 0}
+                    >
+                      <ArrowUpDown className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      排序
+                    </Button>
+                  )}
                   <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-base px-2 sm:px-4">
                     <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     设置
@@ -712,7 +876,7 @@ export default function Home() {
       return <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-lg mb-6">{error}</div>
     }
 
-    if (contents.length === 0) {
+    if (contents.length === 0 && !isSorting) {
       return (
         <div className="text-center py-12">
           <p className="text-gray-400 mb-4">暂无内容</p>
@@ -721,6 +885,86 @@ export default function Home() {
               <span>上传新内容</span>
             </Button>
           )}
+        </div>
+      )
+    }
+
+    // 如果在排序模式中
+    if (isSorting) {
+      return (
+        <div className="flex flex-col">
+          <div className="bg-purple-900/30 p-4 mb-6 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">角色卡排序模式</h3>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveSorting} className="bg-green-600 hover:bg-green-700 text-white">
+                  保存排序
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancelSorting} 
+                  className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
+                >
+                  取消
+                </Button>
+              </div>
+            </div>
+            <p className="text-sm text-gray-300 mb-2">拖动角色卡来调整顺序，或使用上下按钮移动。</p>
+            <p className="text-sm text-purple-300">排序将影响首页显示顺序和API中的角色卡顺序。</p>
+          </div>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {sortedContents.map((content, index) => (
+              <div 
+                key={content.id} 
+                className={`bg-gray-800/80 rounded-lg p-3 flex items-center gap-3 cursor-move ${
+                  draggedItem === index ? 'opacity-50' : ''
+                } ${
+                  dragOverItem === index ? 'border border-purple-500' : ''
+                }`}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, index)}
+              >
+                <div className="font-mono text-gray-500 w-8 text-center">{index + 1}</div>
+                <div className="flex-shrink-0 text-gray-400 mr-1">
+                  <GripVertical className="h-5 w-5" />
+                </div>
+                <div className="flex-shrink-0 w-12 h-12 overflow-hidden rounded-md">
+                  <img 
+                    src={content.thumbnail_url || content.blob_url} 
+                    alt={content.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-grow">
+                  <h3 className="text-white font-medium truncate">{content.name}</h3>
+                  <p className="text-gray-400 text-sm truncate">{content.description}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-8 px-2 py-0" 
+                    disabled={index === 0}
+                    onClick={() => moveItemUp(index)}
+                  >
+                    ↑
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-8 px-2 py-0" 
+                    disabled={index === sortedContents.length - 1}
+                    onClick={() => moveItemDown(index)}
+                  >
+                    ↓
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )
     }

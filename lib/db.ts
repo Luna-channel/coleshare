@@ -192,12 +192,12 @@ export async function getContents(type?: ContentType) {
       return await sqlClient`
         SELECT * FROM contents 
         WHERE content_type = ${type} 
-        ORDER BY updated_at DESC
+        ORDER BY sort_order ASC NULLS LAST, updated_at DESC
       `
     } else {
       return await sqlClient`
         SELECT * FROM contents 
-        ORDER BY updated_at DESC
+        ORDER BY sort_order ASC NULLS LAST, updated_at DESC
       `
     }
   } catch (error) {
@@ -717,6 +717,34 @@ export async function getContentsByIds(ids: string[]) {
     return result
   } catch (error) {
     console.error("批量获取内容失败:", error)
+    throw error
+  }
+}
+
+// 更新内容排序顺序
+export async function updateContentSortOrder(id: number, sortOrder: number) {
+  try {
+    if (!sqlClient) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    console.log(`更新内容排序: ID=${id}, 排序值=${sortOrder}`);
+    
+    const result = await sqlClient`
+      UPDATE contents
+      SET sort_order = ${sortOrder}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+      RETURNING *
+    `
+    
+    console.log("更新排序结果:", result);
+    
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0];
+    }
+    return null;
+  } catch (error) {
+    console.error("更新内容排序失败:", error)
     throw error
   }
 }
