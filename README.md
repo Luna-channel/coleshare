@@ -66,6 +66,9 @@ ADMIN_KEY="your-admin-token"
 
 # 会员访问令牌 (可选，如不设置则内容公开)
 MEMBER_KEY="your-member-token"
+
+# 访问日志开关 (可选，设为1开启日志记录，默认为0不记录)
+ACCESS_LOG_ON="0"
 ```
 
 4. 启动开发服务器
@@ -125,6 +128,7 @@ yarn dev
 | BLOB_PREFIX | Vercel Blob存储前缀 (可选) | oshare |
 | ADMIN_KEY | 管理员访问令牌 | your_admin_token |
 | MEMBER_KEY | 会员访问令牌 (可选) | your_member_token |
+| ACCESS_LOG_ON | 是否记录访问日志 (可选，默认为0不记录) | 1 |
 
 ## 数据库配置
 

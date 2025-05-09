@@ -482,6 +482,12 @@ export async function logAccess(data: {
   user_agent?: string
 }) {
   try {
+    // 检查环境变量是否启用访问日志
+    if (process.env.ACCESS_LOG_ON !== "1") {
+      console.log("访问日志功能未启用，跳过记录");
+      return null;
+    }
+    
     if (!sqlClient) {
       throw new Error("数据库连接未初始化")
     }

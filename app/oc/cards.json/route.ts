@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     }
     
     // 使用共享函数处理格式转换
-    const cards = formatCharacterCards(characterCards, storyBooks, knowledgeBases, eventBooks, promptInjections)
+    const cards = formatCharacterCards(characterCards)
     
     // 返回符合规范的结果
     return NextResponse.json({ cards })

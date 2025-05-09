@@ -23,6 +23,7 @@ export const GET = withMemberAuth(async (req: NextRequest) => {
     const userAgent = req.headers.get("user-agent") || ""
 
     try {
+      // logAccess函数会检查环境变量ACCESS_LOG_ON是否为1，不是则跳过记录
       await logAccess({
         content_id: id,
         access_type: "view",
