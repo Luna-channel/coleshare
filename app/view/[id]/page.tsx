@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Download, QrCode } from "lucide-react"
+import { ArrowLeft, Download, QrCode, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import QRCode from "qrcode"
 import React from "react"
@@ -262,6 +262,51 @@ export default function ViewContent({ params }: { params: any }) {
                     <pre className="bg-gray-800 p-4 rounded-md overflow-x-auto">
                       {JSON.stringify(content.metadata, null, 2)}
                     </pre>
+                  </div>
+                )}
+
+                {/* 角色卡相关资源 */}
+                {content.content_type === "character_card" && content.related_resources && (
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold mb-2">相关资源</h2>
+                    {content.related_resources.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {content.related_resources.map((resource: any, index: number) => (
+                          <Link href={`/view/${resource.id}`} key={index}>
+                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-purple-500 transition-all">
+                              <div className="flex items-start gap-3">
+                                {resource.thumbnail_url ? (
+                                  <img 
+                                    src={resource.thumbnail_url} 
+                                    alt={resource.name} 
+                                    className="w-16 h-16 object-cover rounded-md"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 rounded-md bg-gradient-to-b from-gray-700 to-gray-800 flex items-center justify-center">
+                                    <span className="text-xs text-gray-400">{getTypeLabel(resource.content_type).substring(0, 2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-purple-400">{getTypeLabel(resource.content_type)}</div>
+                                  <div className="font-semibold">{resource.name}</div>
+                                  <div className="text-xs text-gray-400 flex items-center mt-1">
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    <span>查看详情</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 text-gray-400">
+                        暂无相关资源
+                      </div>
+                    )}
                   </div>
                 )}
 

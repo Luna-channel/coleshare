@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { withMemberAuth, withAdminAuth } from "@/lib/auth"
-import { getContent, updateContent, deleteContent, logAccess } from "@/lib/db"
+import { getContent, updateContent, deleteContent, logAccess, getContentsByIds } from "@/lib/db"
 import { deleteFromBlob } from "@/lib/blob"
 
 // 获取单个内容
@@ -36,7 +36,7 @@ export const GET = withMemberAuth(async (req: NextRequest) => {
     }
 
     // 确保数据可以被 JSON 序列化
-    const content = {
+    const content: any = {
       id: dbContent.id,
       name: dbContent.name,
       description: dbContent.description,
@@ -48,6 +48,47 @@ export const GET = withMemberAuth(async (req: NextRequest) => {
       created_at: dbContent.created_at ? new Date(dbContent.created_at).toISOString() : null,
       updated_at: dbContent.updated_at ? new Date(dbContent.updated_at).toISOString() : null
     }
+
+    // 如果是角色卡，获取相关资源
+    if (dbContent.content_type === "character_card" && dbContent.metadata) {
+      try {
+        const metadata = dbContent.metadata;
+        // 收集所有相关资源的ID
+        const resourceIds = [
+          ...(metadata.selectedEventBooks || []),
+          ...(metadata.selectedStoryBooks || []),
+          ...(metadata.selectedKnowledgeBases || []),
+          ...(metadata.selectedPromptInjections || [])
+        ];
+        
+        console.log("相关资源ID:", resourceIds);
+        
+        if (resourceIds.length > 0) {
+          // 使用getContentsByIds函数获取关联内容
+          const relatedResources = await getContentsByIds(resourceIds);
+          
+          // 格式化相关资源数据
+          const formattedRelatedResources = relatedResources.map((resource: any) => ({
+            id: resource.id,
+            name: resource.name,
+            content_type: resource.content_type,
+            thumbnail_url: resource.thumbnail_url,
+            description: resource.description?.substring(0, 100) // 限制描述长度
+          }));
+          
+          // 将相关资源添加到返回结果中
+          content.related_resources = formattedRelatedResources;
+        } else {
+          content.related_resources = [];
+        }
+      } catch (relatedError) {
+        console.error("获取相关资源失败:", relatedError)
+        // 失败时不返回相关资源，但不影响主要内容的返回
+        content.related_resources = []
+      }
+    }
+
+    console.log("content", content)
 
     return NextResponse.json(content)
   } catch (error) {
