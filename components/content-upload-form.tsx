@@ -33,6 +33,12 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
   const [intro, setIntro] = useState(initialData?.intro || (initialData?.description || ""))
   const [storyBooks, setStoryBooks] = useState<any[]>([])
   const [selectedStoryBooks, setSelectedStoryBooks] = useState<string[]>([])
+  const [knowledgeBases, setKnowledgeBases] = useState<any[]>([])
+  const [selectedKnowledgeBases, setSelectedKnowledgeBases] = useState<string[]>([])
+  const [eventBooks, setEventBooks] = useState<any[]>([])
+  const [selectedEventBooks, setSelectedEventBooks] = useState<string[]>([])
+  const [promptInjections, setPromptInjections] = useState<any[]>([])
+  const [selectedPromptInjections, setSelectedPromptInjections] = useState<string[]>([])
   
   // 新增状态
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false)
@@ -122,6 +128,164 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
       }
       
       fetchStoryBooks()
+      
+      // 获取知识库列表
+      const fetchKnowledgeBases = async () => {
+        try {
+          console.log("开始获取知识库列表...");
+          const token = localStorage.getItem("adminToken");
+          if (!token) {
+            console.error("缺少管理员令牌，无法获取知识库列表");
+            return;
+          }
+
+          const response = await fetch("/api/contents?type=knowledge_base", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          
+          if (!response.ok) {
+            throw new Error(`获取知识库失败: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          console.log("获取到的知识库数据:", data);
+          
+          // 处理响应数据
+          const processedData = Array.isArray(data) ? data : 
+                              Array.isArray(data.contents) ? data.contents : 
+                              typeof data === 'object' ? [data] : [];
+          
+          setKnowledgeBases(processedData);
+          
+          // 如果是编辑模式，设置已经选择的知识库
+          if (isEditing && initialData?.metadata) {
+            try {
+              const metadata = typeof initialData.metadata === 'string'
+                ? JSON.parse(initialData.metadata)
+                : initialData.metadata
+              
+              if (metadata.selectedKnowledgeBases && Array.isArray(metadata.selectedKnowledgeBases)) {
+                console.log("设置已选择的知识库:", metadata.selectedKnowledgeBases);
+                setSelectedKnowledgeBases(metadata.selectedKnowledgeBases)
+              }
+            } catch (e) {
+              console.error("解析知识库元数据失败:", e)
+            }
+          }
+        } catch (err) {
+          console.error("获取知识库列表失败:", err)
+          setKnowledgeBases([])
+        }
+      }
+      
+      // 获取事件书列表
+      const fetchEventBooks = async () => {
+        try {
+          console.log("开始获取事件书列表...");
+          const token = localStorage.getItem("adminToken");
+          if (!token) {
+            console.error("缺少管理员令牌，无法获取事件书列表");
+            return;
+          }
+
+          const response = await fetch("/api/contents?type=event_book", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          
+          if (!response.ok) {
+            throw new Error(`获取事件书失败: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          console.log("获取到的事件书数据:", data);
+          
+          // 处理响应数据
+          const processedData = Array.isArray(data) ? data : 
+                              Array.isArray(data.contents) ? data.contents : 
+                              typeof data === 'object' ? [data] : [];
+          
+          setEventBooks(processedData);
+          
+          // 如果是编辑模式，设置已经选择的事件书
+          if (isEditing && initialData?.metadata) {
+            try {
+              const metadata = typeof initialData.metadata === 'string'
+                ? JSON.parse(initialData.metadata)
+                : initialData.metadata
+              
+              if (metadata.selectedEventBooks && Array.isArray(metadata.selectedEventBooks)) {
+                console.log("设置已选择的事件书:", metadata.selectedEventBooks);
+                setSelectedEventBooks(metadata.selectedEventBooks)
+              }
+            } catch (e) {
+              console.error("解析事件书元数据失败:", e)
+            }
+          }
+        } catch (err) {
+          console.error("获取事件书列表失败:", err)
+          setEventBooks([])
+        }
+      }
+      
+      // 获取提示注入列表
+      const fetchPromptInjections = async () => {
+        try {
+          console.log("开始获取提示注入列表...");
+          const token = localStorage.getItem("adminToken");
+          if (!token) {
+            console.error("缺少管理员令牌，无法获取提示注入列表");
+            return;
+          }
+
+          const response = await fetch("/api/contents?type=prompt_injection", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          
+          if (!response.ok) {
+            throw new Error(`获取提示注入失败: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          console.log("获取到的提示注入数据:", data);
+          
+          // 处理响应数据
+          const processedData = Array.isArray(data) ? data : 
+                              Array.isArray(data.contents) ? data.contents : 
+                              typeof data === 'object' ? [data] : [];
+          
+          setPromptInjections(processedData);
+          
+          // 如果是编辑模式，设置已经选择的提示注入
+          if (isEditing && initialData?.metadata) {
+            try {
+              const metadata = typeof initialData.metadata === 'string'
+                ? JSON.parse(initialData.metadata)
+                : initialData.metadata
+              
+              if (metadata.selectedPromptInjections && Array.isArray(metadata.selectedPromptInjections)) {
+                console.log("设置已选择的提示注入:", metadata.selectedPromptInjections);
+                setSelectedPromptInjections(metadata.selectedPromptInjections)
+              }
+            } catch (e) {
+              console.error("解析提示注入元数据失败:", e)
+            }
+          }
+        } catch (err) {
+          console.error("获取提示注入列表失败:", err)
+          setPromptInjections([])
+        }
+      }
+      
+      // 并行获取所有关联内容
+      fetchKnowledgeBases()
+      fetchEventBooks()
+      fetchPromptInjections()
     }
   }, [contentType, isEditing, initialData])
 
@@ -178,6 +342,45 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
       return newSelection;
     });
   }
+  
+  // 处理知识库选择
+  const handleKnowledgeBaseChange = (knowledgeBaseId: string) => {
+    const kbIdStr = String(knowledgeBaseId);
+    const isCurrentlySelected = selectedKnowledgeBases.includes(kbIdStr);
+    
+    setSelectedKnowledgeBases(prev => {
+      const newSelection = isCurrentlySelected
+        ? prev.filter(id => id !== kbIdStr)
+        : [...prev, kbIdStr];
+      return newSelection;
+    });
+  }
+  
+  // 处理事件书选择
+  const handleEventBookChange = (eventBookId: string) => {
+    const ebIdStr = String(eventBookId);
+    const isCurrentlySelected = selectedEventBooks.includes(ebIdStr);
+    
+    setSelectedEventBooks(prev => {
+      const newSelection = isCurrentlySelected
+        ? prev.filter(id => id !== ebIdStr)
+        : [...prev, ebIdStr];
+      return newSelection;
+    });
+  }
+  
+  // 处理提示注入选择
+  const handlePromptInjectionChange = (promptInjectionId: string) => {
+    const piIdStr = String(promptInjectionId);
+    const isCurrentlySelected = selectedPromptInjections.includes(piIdStr);
+    
+    setSelectedPromptInjections(prev => {
+      const newSelection = isCurrentlySelected
+        ? prev.filter(id => id !== piIdStr)
+        : [...prev, piIdStr];
+      return newSelection;
+    });
+  }
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,6 +409,9 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
         fileSelected: !!file,
         intro,
         selectedStoryBooks,
+        selectedKnowledgeBases,
+        selectedEventBooks,
+        selectedPromptInjections
       })
       
       // 准备元数据
@@ -213,10 +419,16 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
       if (contentType === ContentType.CHARACTER_CARD) {
         // 确保所有ID都是字符串格式
         const storyBookIds = selectedStoryBooks.map(id => String(id));
+        const knowledgeBaseIds = selectedKnowledgeBases.map(id => String(id));
+        const eventBookIds = selectedEventBooks.map(id => String(id));
+        const promptInjectionIds = selectedPromptInjections.map(id => String(id));
         
         metadata = {
           intro: intro || "",
-          selectedStoryBooks: storyBookIds
+          selectedStoryBooks: storyBookIds,
+          selectedKnowledgeBases: knowledgeBaseIds,
+          selectedEventBooks: eventBookIds,
+          selectedPromptInjections: promptInjectionIds
         };
         
         // 如果编辑模式下有现有元数据，保留其他字段
@@ -230,6 +442,9 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
               ...existingMetadata,
               intro,
               selectedStoryBooks: storyBookIds,
+              selectedKnowledgeBases: knowledgeBaseIds,
+              selectedEventBooks: eventBookIds,
+              selectedPromptInjections: promptInjectionIds
             };
           } catch (err) {
             console.error("解析现有元数据失败:", err);
@@ -484,6 +699,144 @@ export function ContentUploadForm({ onSuccess, onCancel, initialData, defaultCon
               ) : (
                 <div className="text-sm text-gray-500 mt-2 p-4 border rounded-md bg-white/5 text-center">
                   暂无可用的故事书，请先上传故事书
+                </div>
+              )}
+            </div>
+          )}
+
+          {contentType === ContentType.CHARACTER_CARD && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                关联知识库 {selectedKnowledgeBases.length > 0 ? `(已选择 ${selectedKnowledgeBases.length} 个)` : ''}
+              </label>
+              {knowledgeBases.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-2 max-h-60 overflow-y-auto p-2 border rounded-md bg-white/5">
+                    {knowledgeBases.map((kb) => {
+                      const kbId = String(kb.id);
+                      const isSelected = selectedKnowledgeBases.includes(kbId);
+                      
+                      return (
+                        <div 
+                          key={kbId}
+                          className={`flex items-center space-x-2 p-1 rounded hover:bg-white/10 ${isSelected ? 'bg-white/20' : ''}`}
+                        >
+                          <Checkbox 
+                            id={`kb-${kbId}`} 
+                            checked={isSelected}
+                            onCheckedChange={() => handleKnowledgeBaseChange(kbId)}
+                          />
+                          <Label 
+                            htmlFor={`kb-${kbId}`} 
+                            className="truncate cursor-pointer text-sm"
+                          >
+                            {kb.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedKnowledgeBases.length > 0 && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      已选择ID: {selectedKnowledgeBases.join(', ')}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-gray-500 mt-2 p-4 border rounded-md bg-white/5 text-center">
+                  暂无可用的知识库，请先上传知识库
+                </div>
+              )}
+            </div>
+          )}
+          
+          {contentType === ContentType.CHARACTER_CARD && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                关联事件书 {selectedEventBooks.length > 0 ? `(已选择 ${selectedEventBooks.length} 本)` : ''}
+              </label>
+              {eventBooks.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-2 max-h-60 overflow-y-auto p-2 border rounded-md bg-white/5">
+                    {eventBooks.map((book) => {
+                      const bookId = String(book.id);
+                      const isSelected = selectedEventBooks.includes(bookId);
+                      
+                      return (
+                        <div 
+                          key={bookId}
+                          className={`flex items-center space-x-2 p-1 rounded hover:bg-white/10 ${isSelected ? 'bg-white/20' : ''}`}
+                        >
+                          <Checkbox 
+                            id={`event-${bookId}`} 
+                            checked={isSelected}
+                            onCheckedChange={() => handleEventBookChange(bookId)}
+                          />
+                          <Label 
+                            htmlFor={`event-${bookId}`} 
+                            className="truncate cursor-pointer text-sm"
+                          >
+                            {book.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedEventBooks.length > 0 && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      已选择ID: {selectedEventBooks.join(', ')}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-gray-500 mt-2 p-4 border rounded-md bg-white/5 text-center">
+                  暂无可用的事件书，请先上传事件书
+                </div>
+              )}
+            </div>
+          )}
+          
+          {contentType === ContentType.CHARACTER_CARD && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                关联提示注入 {selectedPromptInjections.length > 0 ? `(已选择 ${selectedPromptInjections.length} 个)` : ''}
+              </label>
+              {promptInjections.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-2 max-h-60 overflow-y-auto p-2 border rounded-md bg-white/5">
+                    {promptInjections.map((prompt) => {
+                      const promptId = String(prompt.id);
+                      const isSelected = selectedPromptInjections.includes(promptId);
+                      
+                      return (
+                        <div 
+                          key={promptId}
+                          className={`flex items-center space-x-2 p-1 rounded hover:bg-white/10 ${isSelected ? 'bg-white/20' : ''}`}
+                        >
+                          <Checkbox 
+                            id={`prompt-${promptId}`} 
+                            checked={isSelected}
+                            onCheckedChange={() => handlePromptInjectionChange(promptId)}
+                          />
+                          <Label 
+                            htmlFor={`prompt-${promptId}`} 
+                            className="truncate cursor-pointer text-sm"
+                          >
+                            {prompt.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {selectedPromptInjections.length > 0 && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      已选择ID: {selectedPromptInjections.join(', ')}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-gray-500 mt-2 p-4 border rounded-md bg-white/5 text-center">
+                  暂无可用的提示注入，请先上传提示注入
                 </div>
               )}
             </div>

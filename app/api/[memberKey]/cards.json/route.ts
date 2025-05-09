@@ -49,10 +49,13 @@ export async function GET(
     }
     
     // 使用共享函数处理格式转换
-    const cards = formatCharacterCards(characterCards, storyBooks)
+    const cards = await formatCharacterCards(characterCards)
+    
+    // 确保cards是数组
+    const cardsArray = Array.isArray(cards) ? cards : []
     
     // 返回符合规范的结果
-    return NextResponse.json({ cards })
+    return NextResponse.json({ cards: cardsArray })
     
   } catch (error) {
     console.error("获取角色卡列表失败:", error)

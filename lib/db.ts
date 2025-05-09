@@ -678,3 +678,39 @@ export async function updateSiteSettings(data: {
     throw error
   }
 }
+
+// 根据ID数组批量获取内容
+export async function getContentsByIds(ids: string[]) {
+  try {
+    if (!sqlClient) {
+      throw new Error("数据库连接未初始化")
+    }
+    
+    if (!ids || ids.length === 0) {
+      console.log("批量获取内容: 没有提供ID")
+      return []
+    }
+
+    // 将字符串ID转换为数字ID
+    const numericIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+    
+    if (numericIds.length === 0) {
+      console.log("批量获取内容: 没有有效的数字ID")
+      return []
+    }
+    
+    console.log(`批量获取内容: 查询ID ${numericIds.join(', ')}`)
+
+    // 使用ANY操作符代替IN
+    const result = await sqlClient`
+      SELECT * FROM contents 
+      WHERE id = ANY(${numericIds})
+    `
+    
+    console.log(`批量获取内容结果: 找到 ${result.length} 条记录`)
+    return result
+  } catch (error) {
+    console.error("批量获取内容失败:", error)
+    throw error
+  }
+}

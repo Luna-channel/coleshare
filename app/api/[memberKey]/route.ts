@@ -2,32 +2,26 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getContents, ContentType } from "@/lib/db"
 import { formatCharacterCards } from "@/lib/card-formatter"
 
-// 获取角色卡列表 - 兼容客户端cards.json格式
-export async function GET(req: NextRequest) {
+// 获取角色卡列表（通过成员密钥访问）
+export async function GET(
+  req: NextRequest, 
+  { params }: { params: Promise<{ memberKey?: string }> }
+) {
   try {
-    // 获取环境变量中的密钥
-    const memberKey = process.env.MEMBER_KEY
-    const adminKey = process.env.ADMIN_KEY
+    // 从路径参数中获取key (需要await params)
+    const { memberKey: key = "" } = await params;
     
-    // 只有当memberKey被设置时才要求使用带有密钥的路径访问
-    if (memberKey && memberKey.trim() !== "") {
-      console.log("成员密钥已配置，拒绝访问无密钥的/api/cards.json端点");
-      return NextResponse.json({ 
-        error: "此服务器已启用密钥保护，请使用带有密钥的链接访问", 
-        code: "KEY_REQUIRED" 
-      }, { status: 403 });
+    // 获取环境变量中的成员密钥
+    const memberKey = process.env.MEMBER_KEY
+    
+    // 验证密钥
+    if (memberKey && key !== memberKey) {
+      console.log(`密钥不匹配: 提供的是'${key}', 期望的是'${memberKey}'`);
+      return NextResponse.json({ error: "无权限访问" }, { status: 403 })
     }
     
     // 获取所有角色卡
     const characterCards = await getContents(ContentType.CHARACTER_CARD)
-    
-    // 检查角色卡是否有效
-    if (!characterCards || !Array.isArray(characterCards) || characterCards.length === 0) {
-      console.log("未找到角色卡数据");
-      return NextResponse.json({ cards: [] });
-    }
-    
-    console.log(`获取到 ${characterCards.length} 张角色卡`);
     
     // 获取所有故事书
     let storyBooks = []
@@ -65,17 +59,11 @@ export async function GET(req: NextRequest) {
       // 继续执行，不抛出错误
     }
     
-    // 使用共享函数处理格式转换
-    console.log("角色卡数据:", JSON.stringify(characterCards).slice(0, 200));
-    const cards = await formatCharacterCards(characterCards);
-    console.log("格式化后的卡片数据:", JSON.stringify(cards).slice(0, 200));
-    
-    // 确保cards是数组
-    const cardsArray = Array.isArray(cards) ? cards : [];
+    // 使用共享函数处理格式转换，包含所有关联内容
+    const cards = formatCharacterCards(characterCards, storyBooks, knowledgeBases, eventBooks, promptInjections)
     
     // 返回符合规范的结果
-    return NextResponse.json({ cards: cardsArray })
-    
+    return NextResponse.json({ cards })
   } catch (error) {
     console.error("获取角色卡列表失败:", error)
     

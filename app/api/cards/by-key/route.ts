@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getContents, ContentType } from "@/lib/db"
+import { formatCharacterCards } from "@/lib/card-formatter"
 import path from "path"
 
 // 使用查询参数获取角色卡列表（替代路径参数方案）
@@ -30,71 +31,35 @@ export async function GET(req: NextRequest) {
       // 继续执行，不抛出错误
     }
     
-    // 转换为客户端期望的格式
-    const cards = characterCards.map((card: any) => {
-      // 从blob_url中提取文件名
-      const fileName = path.basename(card.blob_url)
-      const uploadTime = card.created_at ? new Date(card.created_at).toISOString() : new Date().toISOString()
-      
-      // 尝试从描述或元数据中提取额外信息
-      let gender = "unknown"
-      let intro = card.description || ""
-      let personality = ""
-      let selectedStoryBooks: string[] = []
-      
-      // 如果有元数据，尝试解析
-      if (card.metadata) {
-        try {
-          const metadata = typeof card.metadata === 'string' 
-            ? JSON.parse(card.metadata) 
-            : card.metadata
-            
-          gender = metadata.gender || gender
-          intro = metadata.intro || intro
-          personality = metadata.personality || personality
-          
-          // 获取选中的故事书ID
-          if (metadata.selectedStoryBooks && Array.isArray(metadata.selectedStoryBooks)) {
-            selectedStoryBooks = metadata.selectedStoryBooks
-          }
-        } catch (e) {
-          console.error("解析元数据失败:", e)
-        }
-      }
-      
-      // 查找与此角色卡相关的故事书
-      const relatedStories = storyBooks.filter((story: any) => {
-        // 1. 检查故事书是否在selectedStoryBooks中
-        if (selectedStoryBooks.includes(String(story.id))) {
-          return true
-        }
-        
-        // 2. 检查标签是否包含角色卡名称或ID（向后兼容）
-        const storyTags = story.tags || []
-        return storyTags.includes(card.name) || storyTags.includes(String(card.id))
-      }).map((story: any) => {
-        return {
-          path: story.blob_url, // 使用完整URL
-          name: path.basename(story.blob_url),
-          uploadTime: story.created_at ? new Date(story.created_at).toISOString() : new Date().toISOString()
-        }
-      })
-      
-      return {
-        id: String(card.id),
-        name: card.name,
-        fileName: fileName,
-        filePath: card.blob_url,
-        coverPath: card.thumbnail_url || card.blob_url,
-        fileType: fileName.includes('.') ? path.extname(fileName).replace(".", "") : "",
-        uploadTime,
-        gender,
-        intro,
-        description: intro, // 保持向后兼容
-        personality,
-        stories: relatedStories
-      }
-    })
+    // 获取所有知识库
+    let knowledgeBases = []
+    try {
+      knowledgeBases = await getContents(ContentType.KNOWLEDGE_BASE)
+    } catch (error) {
+      console.warn("获取知识库失败:", error)
+      // 继续执行，不抛出错误
+    }
+    
+    // 获取所有事件书
+    let eventBooks = []
+    try {
+      eventBooks = await getContents(ContentType.EVENT_BOOK)
+    } catch (error) {
+      console.warn("获取事件书失败:", error)
+      // 继续执行，不抛出错误
+    }
+    
+    // 获取所有提示注入
+    let promptInjections = []
+    try {
+      promptInjections = await getContents(ContentType.PROMPT_INJECTION)
+    } catch (error) {
+      console.warn("获取提示注入失败:", error)
+      // 继续执行，不抛出错误
+    }
+    
+    // 使用共享函数处理格式转换
+    const cards = formatCharacterCards(characterCards, storyBooks, knowledgeBases, eventBooks, promptInjections)
     
     // 返回符合规范的结果
     return NextResponse.json({ cards })
