@@ -147,6 +147,79 @@ yarn dev
 3. 获取读写令牌
 4. 在环境变量中设置`BLOB_READ_WRITE_TOKEN`
 
+## 存储服务配置
+
+本项目支持两种存储后端：
+- Vercel Blob Storage
+- Cloudflare R2 Storage
+
+### 环境变量配置
+
+1. 存储类型选择：
+```env
+# 可选值：vercel 或 r2
+STORAGE_TYPE=vercel
+```
+
+2. Vercel Blob 配置（当 STORAGE_TYPE=vercel 时）：
+```env
+# 存储路径前缀，默认为 "oshare/"
+BLOB_PREFIX=oshare
+```
+
+3. Cloudflare R2 配置（当 STORAGE_TYPE=r2 时）：
+```env
+# Cloudflare 账号 ID
+R2_ACCOUNT_ID=your_account_id
+
+# R2 API 访问密钥
+R2_ACCESS_KEY_ID=your_access_key_id
+R2_SECRET_ACCESS_KEY=your_secret_access_key
+
+# R2 存储桶名称
+R2_BUCKET_NAME=your_bucket_name
+
+# R2 存储桶的公共访问 URL
+R2_PUBLIC_URL=https://your-bucket.r2.dev
+```
+
+### 使用方法
+
+1. 上传文件：
+```typescript
+import { uploadFile } from '@/lib/storage'
+
+// 上传文件
+const result = await uploadFile(file, contentType, filename)
+// 返回结果包含：
+// - url: 文件访问地址
+// - thumbnailUrl: 缩略图地址（仅图片文件）
+```
+
+2. 删除文件：
+```typescript
+import { deleteFile } from '@/lib/storage'
+
+// 删除文件
+const success = await deleteFile(fileUrl)
+```
+
+### 支持的文件类型
+
+系统预定义了以下文件类型：
+- `character_card`: PNG 格式的角色卡图片
+- `knowledge_base`: TXT 格式的知识库文件
+- `event_book`: JSON 格式的事件书文件
+- `prompt_injection`: JSON 格式的提示词注入文件
+
+其他文件类型将使用原始文件扩展名。
+
+### 缩略图功能
+
+- 对于 `character_card` 类型的文件，系统会自动生成 JPG 格式的缩略图
+- 其他图片文件（PNG、JPG、JPEG、GIF、WEBP、SVG）将使用原图作为缩略图
+- 非图片文件不会生成缩略图
+
 ## 问题排查
 
 ### 数据库连接问题

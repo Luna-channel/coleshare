@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { withAdminAuth } from "@/lib/auth"
-import { uploadToBlob } from "@/lib/blob"
+import { uploadFile } from "@/lib/storage"
 
 // 上传文件
 export const POST = withAdminAuth(async (req: NextRequest) => {
@@ -14,7 +14,7 @@ export const POST = withAdminAuth(async (req: NextRequest) => {
       return NextResponse.json({ error: "缺少必填字段" }, { status: 400 })
     }
 
-    const result = await uploadToBlob(file, contentType, filename)
+    const result = await uploadFile(file, contentType, filename)
 
     return NextResponse.json(result)
   } catch (error) {
