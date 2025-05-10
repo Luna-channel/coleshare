@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { ContentCard } from "@/components/content-card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings, ArrowUpDown, GripVertical } from "lucide-react"
+import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings, ArrowUpDown, GripVertical, FileDown } from "lucide-react"
 import { ContentUploadForm } from "@/components/content-upload-form"
 import { LoginForm } from "@/components/login-form"
 import { ContentType } from "@/lib/db"
@@ -13,6 +13,27 @@ import { deleteCookie } from "@/lib/cookies"
 import QRCode from "qrcode"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { SiteSettingsForm } from "@/components/site-settings-form"
+import JSZip from "jszip"
+import { createHash } from "crypto"
+
+// 定义资源类型
+interface Resource {
+  name: string;
+  path?: string;  // 允许 path 为可选
+}
+
+// 定义角色卡类型
+interface CharacterCard {
+  id: number;
+  name: string;
+  description?: string;
+  coverPath?: string;
+  filePath?: string;
+  stories?: Resource[];
+  knowledgeBases?: Resource[];
+  eventBooks?: Resource[];
+  promptInjections?: Resource[];
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ContentType | "all" | "characters">(ContentType.CHARACTER_CARD)
@@ -58,6 +79,13 @@ export default function Home() {
   // 二维码相关状态
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("")
+
+  // 导出相关状态
+  const [exportProgress, setExportProgress] = useState<{
+    total: number;
+    current: number;
+    message: string;
+  } | null>(null);
 
   // 获取配置状态
   useEffect(() => {
@@ -571,6 +599,235 @@ export default function Home() {
     setDragOverItem(index)
   }
 
+  // 生成URL的hash值
+  const getUrlHash = (url: string) => {
+    return createHash('md5').update(url).digest('hex');
+  };
+
+  // 处理导出
+  const handleExport = async () => {
+    try {
+      // 获取成员密钥
+      let memberKey = localStorage.getItem("memberToken") || "";
+      
+      // 如果本地没有memberKey，尝试从API获取
+      if (!memberKey) {
+        try {
+          const response = await fetch("/api/member-key");
+          if (response.ok) {
+            memberKey = await response.text();
+          }
+        } catch (error) {
+          console.error("获取成员密钥失败:", error);
+          return;
+        }
+      }
+      
+      // 创建基本URL
+      const baseUrl = window.location.origin;
+      let apiUrl;
+      
+      // 根据是否有memberKey决定使用哪种API路径
+      if (memberKey) {
+        apiUrl = new URL(`/api/${memberKey}/cards.json`, baseUrl);
+      } else {
+        apiUrl = new URL('/api/cards.json', baseUrl);
+      }
+
+      console.log("请求URL:", apiUrl.toString());
+
+      // 获取cards.json数据
+      const response = await fetch(apiUrl.toString());
+      if (!response.ok) {
+        throw new Error(`获取cards.json失败: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+
+      // 检查数据格式
+      if (!data || !data.cards || !Array.isArray(data.cards)) {
+        throw new Error("cards.json 数据格式错误，期望 { cards: [...] }");
+      }
+
+      const cardsData = data.cards;
+
+      // 创建zip实例
+      const zip = new JSZip();
+
+      // 用于存储已下载的资源
+      const downloadedResources = new Map<string, string>();
+
+      // 计算总文件数
+      let totalFiles = 0;
+      cardsData.forEach((card: CharacterCard) => {
+        if (card.coverPath?.startsWith('http')) totalFiles++;
+        if (card.filePath?.startsWith('http')) totalFiles++;
+        ['stories', 'knowledgeBases', 'eventBooks', 'promptInjections'].forEach(type => {
+          if (Array.isArray(card[type as keyof CharacterCard])) {
+            totalFiles += (card[type as keyof CharacterCard] as Array<{ path?: string }>)
+              .filter(r => r.path?.startsWith('http')).length;
+          }
+        });
+      });
+
+      let processedFiles = 0;
+      setExportProgress({ total: totalFiles, current: 0, message: "开始导出..." });
+
+      // 处理每个角色卡中的资源文件
+      const processedCards = await Promise.all(cardsData.map(async (card: CharacterCard) => {
+        if (!card || typeof card !== 'object') {
+          console.warn("跳过无效的角色卡数据:", card);
+          return card;
+        }
+
+        const newCard = { ...card };
+        
+        // 处理封面（coverPath）
+        if (card.coverPath && typeof card.coverPath === 'string' && card.coverPath.startsWith('http')) {
+          try {
+            setExportProgress(prev => ({
+              total: totalFiles,
+              current: processedFiles,
+              message: `下载封面: ${card.name}`
+            }));
+
+            const coverHash = getUrlHash(card.coverPath);
+            const coverFileName = `covers/${coverHash}${card.coverPath.substring(card.coverPath.lastIndexOf('.'))}`;
+
+            if (!downloadedResources.has(card.coverPath)) {
+              const coverResponse = await fetch(card.coverPath);
+              if (!coverResponse.ok) {
+                throw new Error(`下载封面失败: ${coverResponse.status}`);
+              }
+              const coverBlob = await coverResponse.blob();
+              zip.file(coverFileName, coverBlob);
+              downloadedResources.set(card.coverPath, coverFileName);
+            }
+
+            newCard.coverPath = downloadedResources.get(card.coverPath);
+            processedFiles++;
+            setExportProgress(prev => ({
+              total: totalFiles,
+              current: processedFiles,
+              message: `已下载: ${card.name} 的封面`
+            }));
+          } catch (error) {
+            console.error(`下载封面失败: ${card.coverPath}`, error);
+          }
+        }
+
+        // 处理角色卡图片（filePath）
+        if (card.filePath && typeof card.filePath === 'string' && card.filePath.startsWith('http')) {
+          try {
+            setExportProgress(prev => ({
+              total: totalFiles,
+              current: processedFiles,
+              message: `下载角色卡: ${card.name}`
+            }));
+
+            const cardHash = getUrlHash(card.filePath);
+            const cardFileName = `images/${cardHash}${card.filePath.substring(card.filePath.lastIndexOf('.'))}`;
+
+            if (!downloadedResources.has(card.filePath)) {
+              const cardResponse = await fetch(card.filePath);
+              if (!cardResponse.ok) {
+                throw new Error(`下载角色卡图片失败: ${cardResponse.status}`);
+              }
+              const cardBlob = await cardResponse.blob();
+              zip.file(cardFileName, cardBlob);
+              downloadedResources.set(card.filePath, cardFileName);
+            }
+
+            newCard.filePath = downloadedResources.get(card.filePath);
+            processedFiles++;
+            setExportProgress(prev => ({
+              total: totalFiles,
+              current: processedFiles,
+              message: `已下载: ${card.name} 的角色卡`
+            }));
+          } catch (error) {
+            console.error(`下载角色卡图片失败: ${card.filePath}`, error);
+          }
+        }
+
+        // 处理关联资源
+        const resourceTypes = ['stories', 'knowledgeBases', 'eventBooks', 'promptInjections'] as const;
+        for (const type of resourceTypes) {
+          const resources = card[type];
+          if (Array.isArray(resources)) {
+            newCard[type] = await Promise.all(resources.map(async (resource: Resource) => {
+              if (resource.path && typeof resource.path === 'string' && resource.path.startsWith('http')) {
+                try {
+                  setExportProgress(prev => ({
+                    total: totalFiles,
+                    current: processedFiles,
+                    message: `下载${type}: ${card.name} - ${resource.name}`
+                  }));
+
+                  const resourceHash = getUrlHash(resource.path);
+                  const resourceFileName = `resources/${type}/${resourceHash}${resource.path.substring(resource.path.lastIndexOf('.'))}`;
+
+                  if (!downloadedResources.has(resource.path)) {
+                    const resourceResponse = await fetch(resource.path);
+                    if (!resourceResponse.ok) {
+                      throw new Error(`下载${type}资源失败: ${resourceResponse.status}`);
+                    }
+                    const resourceBlob = await resourceResponse.blob();
+                    zip.file(resourceFileName, resourceBlob);
+                    downloadedResources.set(resource.path, resourceFileName);
+                  }
+
+                  processedFiles++;
+                  setExportProgress(prev => ({
+                    total: totalFiles,
+                    current: processedFiles,
+                    message: `已下载: ${card.name} - ${resource.name}`
+                  }));
+
+                  return { ...resource, path: downloadedResources.get(resource.path) };
+                } catch (error) {
+                  console.error(`下载${type}资源失败: ${resource.path}`, error);
+                  return resource;
+                }
+              }
+              return resource;
+            }));
+          }
+        }
+
+        return newCard;
+      }));
+
+      // 将处理后的cards.json添加到zip
+      const finalJson = { cards: processedCards };
+      zip.file("cards.json", JSON.stringify(finalJson, null, 2));
+
+      setExportProgress(prev => ({
+        total: totalFiles,
+        current: totalFiles,
+        message: "正在生成zip文件..."
+      }));
+
+      // 生成zip文件
+      const content = await zip.generateAsync({ type: "blob" });
+      
+      // 创建下载链接
+      const url = window.URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "cards.zip";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setExportProgress(null);
+    } catch (error) {
+      console.error("导出失败:", error);
+      alert("导出失败: " + (error instanceof Error ? error.message : String(error)));
+      setExportProgress(null);
+    }
+  };
+
   // 如果需要登录且未登录，或者显示登录表单，则显示登录表单
   if ((configState.hasMemberKey && !isMember && !isAdmin) || showLoginForm) {
     return (
@@ -703,6 +960,13 @@ export default function Home() {
                     <PlusIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     上传内容
                   </Button>
+                  <Button 
+                    onClick={handleExport} 
+                    className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4"
+                  >
+                    <FileDown className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    导出
+                  </Button>
                   {isSorting ? (
                     <div className="flex gap-2">
                       <Button onClick={handleSaveSorting} className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4">
@@ -833,6 +1097,32 @@ export default function Home() {
                 扫描二维码添加角色列表到发现页面
               </p>
               
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 导出进度对话框 */}
+        <Dialog open={!!exportProgress} onOpenChange={() => {}}>
+          <DialogContent className="w-[90vw] max-w-md mx-auto">
+            <DialogHeader>
+              <DialogTitle>导出进度</DialogTitle>
+              <DialogDescription>
+                {exportProgress?.message}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex flex-col items-center justify-center py-3 sm:py-4">
+              <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                <div 
+                  className="bg-purple-600 h-2.5 rounded-full transition-all duration-300" 
+                  style={{ 
+                    width: `${exportProgress ? (exportProgress.current / exportProgress.total * 100) : 0}%` 
+                  }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-400">
+                {exportProgress ? `${exportProgress.current}/${exportProgress.total}` : '0/0'}
+              </p>
             </div>
           </DialogContent>
         </Dialog>

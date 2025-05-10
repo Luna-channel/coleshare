@@ -169,7 +169,7 @@ BLOB_PREFIX=oshare
 
 3. Cloudflare R2 配置（当 STORAGE_TYPE=r2 时）：
 ```env
-# Cloudflare 账号 ID
+# Cloudflare 账号 ID（S3 API URL的前缀）
 R2_ACCOUNT_ID=your_account_id
 
 # R2 API 访问密钥
