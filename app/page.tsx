@@ -659,12 +659,12 @@ export default function Home() {
       // 计算总文件数
       let totalFiles = 0;
       cardsData.forEach((card: CharacterCard) => {
-        if (card.coverPath?.startsWith('http')) totalFiles++;
-        if (card.filePath?.startsWith('http')) totalFiles++;
+        if (card.coverPath && (card.coverPath.startsWith('http') || card.coverPath.startsWith('/'))) totalFiles++;
+        if (card.filePath && (card.filePath.startsWith('http') || card.filePath.startsWith('/'))) totalFiles++;
         ['stories', 'knowledgeBases', 'eventBooks', 'promptInjections'].forEach(type => {
           if (Array.isArray(card[type as keyof CharacterCard])) {
             totalFiles += (card[type as keyof CharacterCard] as Array<{ path?: string }>)
-              .filter(r => r.path?.startsWith('http')).length;
+              .filter(r => r.path && (r.path.startsWith('http') || r.path.startsWith('/'))).length;
           }
         });
       });
@@ -682,7 +682,7 @@ export default function Home() {
         const newCard = { ...card };
         
         // 处理封面（coverPath）
-        if (card.coverPath && typeof card.coverPath === 'string' && card.coverPath.startsWith('http')) {
+        if (card.coverPath && typeof card.coverPath === 'string' && (card.coverPath.startsWith('http') || card.coverPath.startsWith('/'))) {
           try {
             setExportProgress(prev => ({
               total: totalFiles,
@@ -690,11 +690,13 @@ export default function Home() {
               message: `下载封面: ${card.name}`
             }));
 
-            const coverHash = getUrlHash(card.coverPath);
-            const coverFileName = `covers/${coverHash}${card.coverPath.substring(card.coverPath.lastIndexOf('.'))}`;
+            // 构建完整URL
+            const fullCoverUrl = card.coverPath.startsWith('http') ? card.coverPath : `${baseUrl}${card.coverPath}`;
+            const coverHash = getUrlHash(fullCoverUrl);
+            const coverFileName = `uploads/${coverHash}${card.coverPath.substring(card.coverPath.lastIndexOf('.'))}`;
 
             if (!downloadedResources.has(card.coverPath)) {
-              const coverResponse = await fetch(card.coverPath);
+              const coverResponse = await fetch(fullCoverUrl);
               if (!coverResponse.ok) {
                 throw new Error(`下载封面失败: ${coverResponse.status}`);
               }
@@ -716,7 +718,7 @@ export default function Home() {
         }
 
         // 处理角色卡图片（filePath）
-        if (card.filePath && typeof card.filePath === 'string' && card.filePath.startsWith('http')) {
+        if (card.filePath && typeof card.filePath === 'string' && (card.filePath.startsWith('http') || card.filePath.startsWith('/'))) {
           try {
             setExportProgress(prev => ({
               total: totalFiles,
@@ -724,11 +726,13 @@ export default function Home() {
               message: `下载角色卡: ${card.name}`
             }));
 
-            const cardHash = getUrlHash(card.filePath);
-            const cardFileName = `images/${cardHash}${card.filePath.substring(card.filePath.lastIndexOf('.'))}`;
+            // 构建完整URL
+            const fullCardUrl = card.filePath.startsWith('http') ? card.filePath : `${baseUrl}${card.filePath}`;
+            const cardHash = getUrlHash(fullCardUrl);
+            const cardFileName = `uploads/${cardHash}${card.filePath.substring(card.filePath.lastIndexOf('.'))}`;
 
             if (!downloadedResources.has(card.filePath)) {
-              const cardResponse = await fetch(card.filePath);
+              const cardResponse = await fetch(fullCardUrl);
               if (!cardResponse.ok) {
                 throw new Error(`下载角色卡图片失败: ${cardResponse.status}`);
               }
@@ -755,7 +759,7 @@ export default function Home() {
           const resources = card[type];
           if (Array.isArray(resources)) {
             newCard[type] = await Promise.all(resources.map(async (resource: Resource) => {
-              if (resource.path && typeof resource.path === 'string' && resource.path.startsWith('http')) {
+              if (resource.path && typeof resource.path === 'string' && (resource.path.startsWith('http') || resource.path.startsWith('/'))) {
                 try {
                   setExportProgress(prev => ({
                     total: totalFiles,
@@ -763,11 +767,13 @@ export default function Home() {
                     message: `下载${type}: ${card.name} - ${resource.name}`
                   }));
 
-                  const resourceHash = getUrlHash(resource.path);
-                  const resourceFileName = `resources/${type}/${resourceHash}${resource.path.substring(resource.path.lastIndexOf('.'))}`;
+                  // 构建完整URL
+                  const fullResourceUrl = resource.path.startsWith('http') ? resource.path : `${baseUrl}${resource.path}`;
+                  const resourceHash = getUrlHash(fullResourceUrl);
+                  const resourceFileName = `uploads/${resourceHash}${resource.path.substring(resource.path.lastIndexOf('.'))}`;
 
                   if (!downloadedResources.has(resource.path)) {
-                    const resourceResponse = await fetch(resource.path);
+                    const resourceResponse = await fetch(fullResourceUrl);
                     if (!resourceResponse.ok) {
                       throw new Error(`下载${type}资源失败: ${resourceResponse.status}`);
                     }

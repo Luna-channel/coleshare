@@ -15,25 +15,42 @@ export async function GET(
     const memberKey = process.env.MEMBER_KEY
     const adminKey = process.env.ADMIN_KEY
     
-    // 验证密钥 - 支持memberKey和adminKey两种
+    // 验证密钥 - 如果没有memberKey就校验adminKey
     let isAuthorized = false
     
-    // 1. 检查是否匹配adminKey
-    if (adminKey && key === adminKey) {
-      console.log(`管理员密钥验证通过: '${key}'`);
-      isAuthorized = true
+    // 如果环境变量中没有memberKey，就校验adminKey
+    if (!memberKey) {
+      if (adminKey && key === adminKey) {
+        console.log(`管理员密钥验证通过: '${key}'`);
+        isAuthorized = true
+      }
+      // 如果有adminKey但验证失败
+      else if (adminKey) {
+        console.log(`管理员密钥不匹配: 提供的是'${key}'`);
+        return NextResponse.json({ error: "无权限访问" }, { status: 403 })
+      }
+      // 如果既没有memberKey也没有adminKey，允许访问
+      else {
+        isAuthorized = true
+      }
     }
-    
-    // 2. 检查是否匹配memberKey
-    else if (memberKey && key === memberKey) {
-      console.log(`成员密钥验证通过: '${key}'`);
-      isAuthorized = true
-    }
-    
-    // 如果验证失败且需要验证
-    if (!isAuthorized && (memberKey || adminKey)) {
-      console.log(`密钥不匹配: 提供的是'${key}'`);
-      return NextResponse.json({ error: "无权限访问" }, { status: 403 })
+    // 如果有memberKey，按原逻辑验证
+    else {
+      // 1. 检查是否匹配adminKey
+      if (adminKey && key === adminKey) {
+        console.log(`管理员密钥验证通过: '${key}'`);
+        isAuthorized = true
+      }
+      // 2. 检查是否匹配memberKey
+      else if (key === memberKey) {
+        console.log(`成员密钥验证通过: '${key}'`);
+        isAuthorized = true
+      }
+      // 验证失败
+      else {
+        console.log(`密钥不匹配: 提供的是'${key}'`);
+        return NextResponse.json({ error: "无权限访问" }, { status: 403 })
+      }
     }
     
     // 获取所有角色卡
@@ -67,4 +84,4 @@ export async function GET(
     
     return NextResponse.json({ error: "获取角色卡列表失败" }, { status: 500 })
   }
-} 
+}
