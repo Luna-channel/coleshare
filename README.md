@@ -8,11 +8,13 @@
 ## 功能特性
 
 - 支持多种内容类型：角色卡、知识库、事件簿、故事书等
-- 文件上传与存储（使用Vercel Blob Storage）
+- 多种存储方案：本地文件存储、Vercel Blob、Cloudflare R2
+- 多种数据库支持：SQLite（本地开发）、PostgreSQL（生产环境）
 - 内容管理和共享
 - 响应式设计，支持移动设备访问
 - 访问日志记录
 - 数据库自动初始化功能
+- 本地化开发支持，无需外部服务即可运行
 
 ## 技术栈
 
@@ -20,8 +22,8 @@
 - React 19
 - TypeScript
 - Tailwind CSS
-- NeonDB (PostgreSQL)
-- Vercel Blob Storage
+- 数据库：SQLite（本地开发）/ PostgreSQL（生产环境，推荐 NeonDB）
+- 存储：本地文件系统（开发）/ Vercel Blob（生产，默认）/ Cloudflare R2（可选）
 
 ## 安装指南
 
@@ -49,13 +51,42 @@ yarn install
 
 3. 创建并配置环境变量文件
 
-在项目根目录创建`.env.local`文件，添加以下环境变量：
+在项目根目录创建`.env.local`文件，根据需要选择配置方案：
+
+#### 方案一：本地化开发（推荐用于开发环境）
+
+使用 SQLite 数据库和本地文件存储，无需外部服务：
+
+```env
+# 数据库配置 - 使用本地 SQLite
+DATABASE_URL="sqlite://./data/database.db"
+
+# 存储配置 - 使用本地文件系统
+STORAGE_TYPE="local"
+
+# 管理员访问令牌
+ADMIN_KEY="your-admin-token"
+
+# 会员访问令牌 (可选，如不设置则内容公开)
+MEMBER_KEY="your-member-token"
+
+# 网站URL (开发环境)
+NEXT_PUBLIC_URL="http://localhost:3000"
+
+# 访问日志开关 (可选，设为1开启日志记录，默认为0不记录)
+ACCESS_LOG_ON="0"
+```
+
+#### 方案二：云服务配置（用于生产环境或需要云服务的开发）
+
+使用 PostgreSQL 数据库和 Vercel Blob 存储：
 
 ```env
 # 数据库连接URL (Neon Database)
 DATABASE_URL="postgres://username:password@your-neon-db-host/dbname"
 
-# Vercel Blob存储令牌
+# 存储配置 - 使用 Vercel Blob
+STORAGE_TYPE="vercel"
 BLOB_READ_WRITE_TOKEN="your-blob-token"
 
 # Vercel Blob存储前缀 (可选，用于多项目共享存储，默认为"oshare")
@@ -121,16 +152,60 @@ yarn dev
 
 ## 环境变量说明
 
+### 核心配置
+
 | 变量名 | 描述 | 示例 |
 |--------|------|------|
-| DATABASE_URL | NeonDB数据库连接字符串 | postgres://user:password@host:port/database |
-| BLOB_READ_WRITE_TOKEN | Vercel Blob存储读写令牌 | vercel_blob_rw_token123... |
-| BLOB_PREFIX | Vercel Blob存储前缀 (可选) | oshare |
 | ADMIN_KEY | 管理员访问令牌 | your_admin_token |
 | MEMBER_KEY | 会员访问令牌 (可选) | your_member_token |
+| NEXT_PUBLIC_URL | 网站公开访问URL | http://localhost:3000 |
 | ACCESS_LOG_ON | 是否记录访问日志 (可选，默认为0不记录) | 1 |
 
+### 数据库配置
+
+| 变量名 | 描述 | 示例 |
+|--------|------|------|
+| DATABASE_URL | 数据库连接字符串 | sqlite://./data/database.db 或 postgres://user:password@host:port/database |
+
+### 存储配置
+
+| 变量名 | 描述 | 示例 |
+|--------|------|------|
+| STORAGE_TYPE | 存储类型 (local/vercel/r2) | local |
+| LOCAL_STORAGE_DIR | 本地存储目录 (可选，默认为./public/uploads) | ./public/uploads |
+| LOCAL_STORAGE_URL_PREFIX | 本地存储URL前缀 (可选，默认为/uploads) | /uploads |
+| BLOB_READ_WRITE_TOKEN | Vercel Blob存储读写令牌 | vercel_blob_rw_token123... |
+| BLOB_PREFIX | Vercel Blob存储前缀 (可选) | oshare |
+| R2_ACCOUNT_ID | Cloudflare R2账号ID | your_account_id |
+| R2_ACCESS_KEY_ID | Cloudflare R2访问密钥ID | your_access_key_id |
+| R2_SECRET_ACCESS_KEY | Cloudflare R2访问密钥 | your_secret_access_key |
+| R2_BUCKET_NAME | Cloudflare R2存储桶名称 | your_bucket_name |
+| R2_PUBLIC_URL | Cloudflare R2公开访问URL | https://your-bucket.r2.dev |
+
 ## 数据库配置
+
+本项目支持两种数据库配置方案：
+
+### 方案一：本地 SQLite 数据库（推荐用于开发环境）
+
+使用本地 SQLite 数据库，无需外部服务：
+
+```env
+DATABASE_URL="sqlite://./data/database.db"
+```
+
+**优点：**
+- 无需配置外部数据库服务
+- 快速启动开发环境
+- 数据存储在本地，便于调试
+- 零成本
+
+**注意事项：**
+- 仅适用于开发环境和小型部署
+- 不支持多服务器部署
+- 需要定期备份数据文件
+
+### 方案二：PostgreSQL 数据库（推荐用于生产环境）
 
 本项目使用[Neon](https://neon.tech)提供的PostgreSQL数据库。你需要：
 
@@ -138,14 +213,49 @@ yarn dev
 2. 获取连接字符串
 3. 在环境变量中设置`DATABASE_URL`
 
-## Blob存储配置
+```env
+DATABASE_URL="postgres://username:password@your-neon-db-host/dbname"
+```
+
+## 存储配置
+
+本项目支持多种存储方案：
+
+### 方案一：本地文件存储（推荐用于开发环境）
+
+使用本地文件系统存储上传的文件：
+
+```env
+STORAGE_TYPE="local"
+LOCAL_STORAGE_DIR="./public/uploads"  # 可选，默认值
+LOCAL_STORAGE_URL_PREFIX="/uploads"   # 可选，默认值
+```
+
+**优点：**
+- 无需配置外部存储服务
+- 最快的读写速度
+- 零成本
+- 便于开发调试
+
+**注意事项：**
+- 仅适用于开发环境和单机部署
+- 需要定期备份文件
+- 不支持多服务器部署
+
+### 方案二：Vercel Blob 存储（推荐用于生产环境）
 
 本项目使用[Vercel Blob](https://vercel.com/docs/storage/vercel-blob)存储文件。配置步骤：
 
 1. 登录Vercel控制台
 2. 进入Storage部分创建一个Blob存储
 3. 获取读写令牌
-4. 在环境变量中设置`BLOB_READ_WRITE_TOKEN`
+4. 在环境变量中设置相关配置
+
+```env
+STORAGE_TYPE="vercel"
+BLOB_READ_WRITE_TOKEN="your-blob-token"
+BLOB_PREFIX="oshare"  # 可选，存储前缀
+```
 
 ## 存储服务配置
 
@@ -222,20 +332,54 @@ const success = await deleteFile(fileUrl)
 
 ## 问题排查
 
-### 数据库连接问题
+### 本地化配置问题
 
+**SQLite 数据库问题：**
+- 确认 `data/` 目录存在且有写入权限
+- 检查磁盘空间是否充足
+- 确认 DATABASE_URL 格式：`sqlite://./data/database.db`
+
+**本地存储问题：**
+- 确认 `public/uploads/` 目录存在且有写入权限：`chmod 755 public/uploads`
+- 检查磁盘空间：`df -h`
+- 确认 STORAGE_TYPE 设置为 `local`
+- 验证文件是否正确保存到指定目录
+
+**测试本地配置：**
+```bash
+# 测试本地存储功能
+npm run test:local-storage
+
+# 检查数据库连接
+npm run test:sqlite
+```
+
+### 云服务配置问题
+
+**PostgreSQL 数据库连接问题：**
 - 确认DATABASE_URL环境变量格式正确
 - 检查Neon数据库是否正常运行
 - 检查IP访问限制设置
 - 确保数据库用户有创建表的权限
 
-### Blob存储问题
-
+**Vercel Blob存储问题：**
 - 确认BLOB_READ_WRITE_TOKEN环境变量有效
 - 检查Vercel Blob存储配额是否用尽
 - 检查文件大小是否超出限制
+- 确认 STORAGE_TYPE 设置为 `vercel`
 
+**Cloudflare R2存储问题：**
+- 验证所有 R2 相关环境变量
+- 检查 bucket 权限设置
+- 确认公开访问 URL 配置正确
+- 确认 STORAGE_TYPE 设置为 `r2`
+
+
+## 详细配置文档
+
+- [存储配置指南](./STORAGE.md) - 详细的存储配置说明和最佳实践
+- [数据库配置指南](./DATABASE.md) - 数据库配置和故障排除
 
 ## 许可证
 
-GPLv3 
+GPLv3

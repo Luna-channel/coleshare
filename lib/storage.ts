@@ -2,9 +2,10 @@ import { put, del } from "@vercel/blob"
 import { R2 } from "node-cloudflare-r2"
 import { nanoid } from "nanoid"
 import sharp from 'sharp'
+import { uploadFileLocal, deleteFileLocal, isLocalStorageAvailable } from './local-storage'
 
 // 存储类型枚举
-export type StorageType = 'vercel' | 'r2'
+export type StorageType = 'vercel' | 'r2' | 'local'
 
 // 文件类型映射
 const contentTypeMap = {
@@ -71,7 +72,12 @@ export async function uploadFile(
     let url: string
     let thumbnailUrl: string | undefined
 
-    if (storageType === 'vercel') {
+    if (storageType === 'local') {
+      // 本地文件系统存储
+      const result = await uploadFileLocal(file, contentType, uniqueFilename)
+      url = result.url
+      thumbnailUrl = result.thumbnailUrl
+    } else if (storageType === 'vercel') {
       // Vercel Blob 存储
       const { url: blobUrl } = await put(prefixedFilename, file, {
         access: "public",
@@ -145,7 +151,9 @@ export async function deleteFile(url: string): Promise<boolean> {
 
     const fullPath = '/' + validParts.join('/')
 
-    if (storageType === 'vercel') {
+    if (storageType === 'local') {
+      return await deleteFileLocal(url)
+    } else if (storageType === 'vercel') {
       await del(fullPath)
     } else {
       const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
@@ -157,4 +165,4 @@ export async function deleteFile(url: string): Promise<boolean> {
     console.error("文件删除失败:", error)
     return false
   }
-} 
+}

@@ -25,3 +25,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local storage uploads
+/public/uploads/
+
+# local database files
+/data/*.db
+/data/*.db-*
+*.db
+*.db-*
