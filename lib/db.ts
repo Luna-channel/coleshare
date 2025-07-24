@@ -92,6 +92,39 @@ export async function getContent(id: number) {
   }
 }
 
+// 批量获取内容（按ID数组）
+export async function getContentsByIds(ids: string[]): Promise<any[]> {
+  try {
+    const adapter = await getDbAdapter()
+    const results: any[] = []
+    
+    // 并行查询所有内容
+    const promises = ids.map(id => {
+      const numericId = parseInt(id, 10)
+      if (isNaN(numericId)) {
+        console.warn(`无效的内容ID: ${id}`)
+        return Promise.resolve(null)
+      }
+      return adapter.getContent(numericId)
+    })
+    
+    const contents = await Promise.all(promises)
+    
+    // 过滤掉null值
+    contents.forEach(content => {
+      if (content) {
+        results.push(content)
+      }
+    })
+    
+    console.log(`批量查询返回 ${results.length} 条内容`)
+    return results
+  } catch (error) {
+    console.error("批量获取内容失败:", error)
+    throw error
+  }
+}
+
 // 创建内容
 export async function createContent(data: {
   name: string

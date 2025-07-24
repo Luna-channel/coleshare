@@ -258,4 +258,4 @@ function formatBasicCardInfo(card: any) {
     personality,
     tags
   }
-} 
+}
