@@ -179,6 +179,17 @@ export async function updateContent(
   }
 }
 
+// 更新内容排序
+export async function updateContentSortOrder(id: number, sortOrder: number) {
+  try {
+    const adapter = await getDbAdapter()
+    return await adapter.updateContentSortOrder(id, sortOrder)
+  } catch (error) {
+    console.error("更新内容排序失败:", error)
+    throw error
+  }
+}
+
 // 删除内容
 export async function deleteContent(id: number) {
   try {

@@ -302,6 +302,36 @@ export class SQLiteAdapter implements DatabaseAdapter {
     return content
   }
 
+  async updateContentSortOrder(id: number, sortOrder: number): Promise<any | null> {
+    if (!this.db) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    try {
+      const stmt = this.db.prepare(`
+        UPDATE contents 
+        SET sort_order = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `)
+      
+      const result = stmt.run(sortOrder, id)
+      
+      if (result.changes === 0) {
+        return null
+      }
+      
+      // 返回更新后的内容
+      const updatedContent = this.db.prepare(`
+        SELECT * FROM contents WHERE id = ?
+      `).get(id)
+      
+      return this.parseRow(updatedContent)
+    } catch (error) {
+      console.error("更新内容排序失败:", error)
+      throw error
+    }
+  }
+
   async logAccess(data: {
     content_id: number
     access_type: string

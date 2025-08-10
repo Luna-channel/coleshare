@@ -293,6 +293,26 @@ export class PostgresAdapter implements DatabaseAdapter {
     return null
   }
 
+  async updateContentSortOrder(id: number, sortOrder: number): Promise<any | null> {
+    if (!this.sqlClient) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    try {
+      const result = await this.sqlClient`
+        UPDATE contents 
+        SET sort_order = ${sortOrder}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+        RETURNING *
+      `
+      
+      return result[0] || null
+    } catch (error) {
+      console.error("更新内容排序失败:", error)
+      throw error
+    }
+  }
+
   async logAccess(data: {
     content_id: number
     access_type: string
