@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { ContentCard } from "@/components/content-card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings, ArrowUpDown, GripVertical, FileDown } from "lucide-react"
+import { PlusIcon, LogOutIcon, QrCodeIcon, Lock, Download, Settings, ArrowUpDown, GripVertical, FileDown, Search } from "lucide-react"
 import { ContentUploadForm } from "@/components/content-upload-form"
 import { LoginForm } from "@/components/login-form"
 import { ContentType } from "@/lib/db"
@@ -51,6 +52,9 @@ export default function Home() {
   const [sortedContents, setSortedContents] = useState<any[]>([])
   const [draggedItem, setDraggedItem] = useState<number | null>(null)
   const [dragOverItem, setDragOverItem] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState<string>("") 
+  const [filteredContents, setFilteredContents] = useState<any[]>([])
+  const [showSearchBox, setShowSearchBox] = useState<boolean>(false)
   
   // 环境变量配置状态
   const [configState, setConfigState] = useState<{
@@ -86,6 +90,21 @@ export default function Home() {
     current: number;
     message: string;
   } | null>(null);
+
+  // 搜索过滤逻辑
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredContents(contents)
+    } else {
+      const filtered = contents.filter(content => {
+        const query = searchQuery.toLowerCase()
+        const name = (content.name || '').toLowerCase()
+        const description = (content.description || '').toLowerCase()
+        return name.includes(query) || description.includes(query)
+      })
+      setFilteredContents(filtered)
+    }
+  }, [contents, searchQuery])
 
   // 获取配置状态
   useEffect(() => {
@@ -960,45 +979,60 @@ export default function Home() {
             </div>
             
             <div className="flex flex-wrap gap-2 justify-end">
+              {/* 搜索按钮 */}
+              <Button 
+                  variant="outline" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-2 sm:px-3 text-sm sm:text-base min-w-[44px] sm:min-w-0"
+                  onClick={() => {
+                    setShowSearchBox(!showSearchBox)
+                    if (showSearchBox) {
+                      setSearchQuery("")
+                    }
+                  }}
+                >
+                  <Search className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
               {isAdmin && (
                 <>
-                  <Button onClick={handleShowUploadForm} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base px-2 sm:px-4">
-                    <PlusIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    上传内容
+                  <Button onClick={handleShowUploadForm} className="flex items-center bg-purple-600 hover:bg-purple-700 text-white text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0">
+                    <PlusIcon className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">上传</span>
                   </Button>
                   <Button 
                     onClick={handleExport} 
-                    className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4"
+                    className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0"
                   >
-                    <FileDown className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    导出
+                    <FileDown className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">导出</span>
                   </Button>
                   {isSorting ? (
                     <div className="flex gap-2">
-                      <Button onClick={handleSaveSorting} className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4">
-                        保存排序
+                      <Button onClick={handleSaveSorting} className="flex items-center bg-green-600 hover:bg-green-700 text-white text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0">
+                        <span className="hidden sm:inline">保存排序</span>
+                        <span className="sm:hidden">保存</span>
                       </Button>
                       <Button 
                         variant="outline" 
                         onClick={handleCancelSorting} 
-                        className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4"
+                        className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0"
                       >
-                        取消
+                        <span className="hidden sm:inline">取消</span>
+                        <span className="sm:hidden">×</span>
                       </Button>
                     </div>
                   ) : (
                     <Button 
                       onClick={handleStartSorting} 
-                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base px-2 sm:px-4"
+                      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0"
                       disabled={activeTab !== ContentType.CHARACTER_CARD && activeTab !== "all" && contents.length === 0}
                     >
-                      <ArrowUpDown className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      排序
+                      <ArrowUpDown className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">排序</span>
                     </Button>
                   )}
-                  <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-base px-2 sm:px-4">
-                    <Settings className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    设置
+                  <Button onClick={handleShowSettingsForm} className="flex items-center bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0">
+                    <Settings className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">设置</span>
                   </Button>
                 </>
               )}
@@ -1011,7 +1045,7 @@ export default function Home() {
               </Button> */}
               <Button 
                 variant="outline" 
-                className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-2 sm:px-3 text-sm sm:text-base"
+                className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 px-2 sm:px-3 text-sm sm:text-base min-w-[44px] sm:min-w-0"
                 onClick={showQRCode}
               >
                 <QrCodeIcon className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -1022,35 +1056,52 @@ export default function Home() {
                 // 管理员已登录，显示登出按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0" 
                   onClick={handleLogout}
                 >
-                  <LogOutIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  登出
+                  <LogOutIcon className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">登出</span>
                 </Button>
               ) : configState.hasAdminKey && (!configState.hasMemberKey || !isMember) ? (
                 // 有管理员密钥但未登录，显示管理员登录按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4"
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0"
                   onClick={() => setShowLoginForm(true)}
                 >
-                  <Lock className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  管理员登录
+                  <Lock className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">管理员登录</span>
                 </Button>
               ) : isMember && !configState.allowPublicAccess ? (
                 // 成员已登录，显示登出按钮
                 <Button 
                   variant="outline" 
-                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4" 
+                  className="flex items-center bg-gray-800 text-white border-gray-600 hover:bg-gray-700 text-sm sm:text-base px-2 sm:px-4 min-w-[44px] sm:min-w-0" 
                   onClick={handleLogout}
                 >
-                  <LogOutIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                  登出
+                  <LogOutIcon className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">登出</span>
                 </Button>
               ) : null}
             </div>
           </div>
+
+          {/* 搜索框区域 - 在下一行全宽显示 */}
+          {showSearchBox && (
+            <div className="w-full mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="搜索内容..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full bg-gray-800/60 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
 
           <TabsContent value="all" className="mt-0">
             {renderContentGrid()}
@@ -1172,11 +1223,11 @@ export default function Home() {
       return <div className="bg-red-500/20 border border-red-500 text-white p-4 rounded-lg mb-6">{error}</div>
     }
 
-    if (contents.length === 0 && !isSorting) {
+    if (filteredContents.length === 0 && !isSorting) {
       return (
         <div className="text-center py-12">
-          <p className="text-gray-400 mb-4">暂无内容</p>
-          {isAdmin && (
+          <p className="text-gray-400 mb-4">{searchQuery.trim() ? '未找到匹配的内容' : '暂无内容'}</p>
+          {isAdmin && !searchQuery.trim() && (
             <Button onClick={handleShowUploadForm} variant="outline" className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700">
               <span>上传新内容</span>
             </Button>
@@ -1267,7 +1318,7 @@ export default function Home() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
-        {contents.map((content) => (
+        {filteredContents.map((content) => (
           <ContentCard
             key={content.id}
             content={content}

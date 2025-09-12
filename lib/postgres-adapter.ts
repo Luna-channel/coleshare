@@ -218,55 +218,110 @@ export class PostgresAdapter implements DatabaseAdapter {
       throw new Error("数据库连接未初始化")
     }
 
-    // 构建更新字段
-    const updates: string[] = []
-    const values: any[] = []
-    let paramIndex = 1
-
-    if (data.name !== undefined) {
-      updates.push(`name = $${paramIndex++}`)
-      values.push(data.name)
-    }
-    if (data.description !== undefined) {
-      updates.push(`description = $${paramIndex++}`)
-      values.push(data.description)
-    }
-    if (data.blob_url !== undefined) {
-      updates.push(`blob_url = $${paramIndex++}`)
-      values.push(data.blob_url)
-    }
-    if (data.thumbnail_url !== undefined) {
-      updates.push(`thumbnail_url = $${paramIndex++}`)
-      values.push(data.thumbnail_url)
-    }
-    if (data.metadata !== undefined) {
-      updates.push(`metadata = $${paramIndex++}`)
-      values.push(data.metadata ? JSON.stringify(data.metadata) : null)
-    }
-    if (data.tags !== undefined) {
-      updates.push(`tags = $${paramIndex++}`)
-      values.push(data.tags)
-    }
-
-    if (updates.length === 0) {
+    if (Object.keys(data).length === 0) {
       return await this.getContent(id)
     }
 
-    updates.push('updated_at = CURRENT_TIMESTAMP')
+    // 构建更新对象，处理所有可能的字段
+    const updateData: any = {}
+    
+    if (data.name !== undefined) {
+      updateData.name = data.name
+    }
+    if (data.description !== undefined) {
+      updateData.description = data.description
+    }
+    if (data.blob_url !== undefined) {
+      updateData.blob_url = data.blob_url
+    }
+    if (data.thumbnail_url !== undefined) {
+      updateData.thumbnail_url = data.thumbnail_url
+    }
+    if (data.metadata !== undefined) {
+      updateData.metadata = data.metadata ? JSON.stringify(data.metadata) : null
+    }
+    if (data.tags !== undefined) {
+      updateData.tags = data.tags
+    }
+    
+    // 总是更新updated_at
+    updateData.updated_at = new Date()
 
     // 使用neon的标签模板语法进行更新
     let result
-    if (data.name !== undefined) {
+    
+    // 处理最常见的更新场景
+    if (data.description !== undefined && data.metadata !== undefined && data.tags !== undefined) {
+      // 编辑模式：更新description, metadata, tags
       result = await this.sqlClient`
         UPDATE contents
-        SET name = ${data.name}, updated_at = CURRENT_TIMESTAMP
+        SET description = ${updateData.description}, metadata = ${updateData.metadata}, tags = ${updateData.tags}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.name !== undefined && data.description !== undefined && data.metadata !== undefined && data.tags !== undefined) {
+      // 完整更新：name, description, metadata, tags
+      result = await this.sqlClient`
+        UPDATE contents
+        SET name = ${updateData.name}, description = ${updateData.description}, metadata = ${updateData.metadata}, tags = ${updateData.tags}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.description !== undefined) {
+      // 只更新description（最重要的修复）
+      result = await this.sqlClient`
+        UPDATE contents
+        SET description = ${updateData.description}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.name !== undefined) {
+      // 只更新name
+      result = await this.sqlClient`
+        UPDATE contents
+        SET name = ${updateData.name}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.metadata !== undefined) {
+      // 只更新metadata
+      result = await this.sqlClient`
+        UPDATE contents
+        SET metadata = ${updateData.metadata}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.tags !== undefined) {
+      // 只更新tags
+      result = await this.sqlClient`
+        UPDATE contents
+        SET tags = ${updateData.tags}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.blob_url !== undefined) {
+      // 只更新blob_url
+      result = await this.sqlClient`
+        UPDATE contents
+        SET blob_url = ${updateData.blob_url}, updated_at = ${updateData.updated_at}
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (data.thumbnail_url !== undefined) {
+      // 只更新thumbnail_url
+      result = await this.sqlClient`
+        UPDATE contents
+        SET thumbnail_url = ${updateData.thumbnail_url}, updated_at = ${updateData.updated_at}
         WHERE id = ${id}
         RETURNING *
       `
     }
-    // 为其他字段添加类似的更新逻辑...
     
-    return await this.getContent(id)
+    if (Array.isArray(result) && result.length > 0) {
+      return result[0]
+    }
+    
+    return null
   }
 
   async deleteContent(id: number): Promise<any | null> {
