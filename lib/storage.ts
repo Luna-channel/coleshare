@@ -141,23 +141,27 @@ export async function deleteFile(url: string): Promise<boolean> {
   const storageType = (process.env.STORAGE_TYPE || 'vercel') as StorageType
   
   try {
-    const urlPath = new URL(url).pathname
-    const pathParts = urlPath.split('/')
-    const validParts = pathParts.filter(part => part.length > 0)
-    
-    if (validParts.length === 0) {
-      throw new Error("无效的文件URL")
-    }
-
-    const fullPath = '/' + validParts.join('/')
-
     if (storageType === 'local') {
+      // 本地存储：直接使用 deleteFileLocal 函数
       return await deleteFileLocal(url)
-    } else if (storageType === 'vercel') {
-      await del(fullPath)
     } else {
-      const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
-      await bucket.deleteObject(fullPath)
+      // 云存储（Vercel Blob 或 R2）：需要解析完整URL
+      const urlPath = new URL(url).pathname
+      const pathParts = urlPath.split('/')
+      const validParts = pathParts.filter(part => part.length > 0)
+      
+      if (validParts.length === 0) {
+        throw new Error("无效的文件URL")
+      }
+
+      const fullPath = '/' + validParts.join('/')
+
+      if (storageType === 'vercel') {
+        await del(fullPath)
+      } else {
+        const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
+        await bucket.deleteObject(fullPath)
+      }
     }
     
     return true

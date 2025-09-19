@@ -563,6 +563,56 @@ export default function Home() {
     }
   }
 
+  // 自动排序（重置为默认排序）
+  const handleAutoSort = async () => {
+    try {
+      // 调用API重置排序
+      const response = await fetch("/api/contents/reset-sort", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("自动排序失败")
+      }
+
+      // 退出排序模式
+      setIsSorting(false)
+      
+      // 重新加载内容
+      const fetchContents = async () => {
+        setIsLoading(true)
+        try {
+          const token = localStorage.getItem("adminToken") || localStorage.getItem("memberToken") || ""
+          const url = `/api/contents?type=${ContentType.CHARACTER_CARD}`
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+          if (!response.ok) {
+            throw new Error("获取内容失败")
+          }
+          const data = await response.json()
+          setContents(data)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "获取内容失败")
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      fetchContents()
+      
+      alert("已重置为默认排序")
+    } catch (err) {
+      console.error("自动排序失败:", err)
+      alert(err instanceof Error ? err.message : "自动排序失败")
+    }
+  }
+
   // 移动排序项
   const moveItem = (fromIndex: number, toIndex: number) => {
     // 确保索引在有效范围内
@@ -1244,6 +1294,9 @@ export default function Home() {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">角色卡排序模式</h3>
               <div className="flex gap-2">
+                <Button onClick={handleAutoSort} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  自动排序
+                </Button>
                 <Button onClick={handleSaveSorting} className="bg-green-600 hover:bg-green-700 text-white">
                   保存排序
                 </Button>

@@ -111,22 +111,41 @@ export async function uploadToBlob(
 // 从Blob存储删除文件
 export async function deleteFromBlob(url: string): Promise<boolean> {
   try {
-    // 从URL中提取文件名（包含路径）
-    const urlPath = new URL(url).pathname
-    // 提取完整路径部分（包括前缀）
-    const pathParts = urlPath.split('/')
-    // 移除空字符串（URL开头的'/'导致的）
-    const validParts = pathParts.filter(part => part.length > 0)
+    // 检查存储类型
+    const storageType = process.env.STORAGE_TYPE || 'vercel'
     
-    if (validParts.length === 0) {
-      throw new Error("无效的文件URL")
-    }
+    if (storageType === 'local') {
+      // 本地存储：直接使用相对路径或从URL中提取路径
+      let urlPath: string
+      if (url.startsWith('http')) {
+        // 完整URL，提取路径部分
+        urlPath = new URL(url).pathname
+      } else {
+        // 相对路径，直接使用
+        urlPath = url
+      }
+      
+      // 导入本地存储删除函数
+      const { deleteFileLocal } = await import('./local-storage')
+      return await deleteFileLocal(url)
+    } else {
+      // Vercel Blob 存储：需要完整URL
+      const urlPath = new URL(url).pathname
+      // 提取完整路径部分（包括前缀）
+      const pathParts = urlPath.split('/')
+      // 移除空字符串（URL开头的'/'导致的）
+      const validParts = pathParts.filter(part => part.length > 0)
+      
+      if (validParts.length === 0) {
+        throw new Error("无效的文件URL")
+      }
 
-    // 使用URL中的完整路径
-    const fullPath = '/' + validParts.join('/')
-    console.log("尝试删除文件:", fullPath)
-    await del(fullPath)
-    return true
+      // 使用URL中的完整路径
+      const fullPath = '/' + validParts.join('/')
+      console.log("尝试删除文件:", fullPath)
+      await del(fullPath)
+      return true
+    }
   } catch (error) {
     console.error("文件删除失败:", error)
     return false

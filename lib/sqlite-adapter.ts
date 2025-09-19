@@ -332,6 +332,26 @@ export class SQLiteAdapter implements DatabaseAdapter {
     }
   }
 
+  async resetContentSortOrder(contentType: ContentType): Promise<void> {
+    if (!this.db) {
+      throw new Error("数据库连接未初始化")
+    }
+
+    try {
+      const stmt = this.db.prepare(`
+        UPDATE contents 
+        SET sort_order = NULL
+        WHERE content_type = ?
+      `)
+      
+      stmt.run(contentType)
+      console.log(`已重置${contentType}类型内容的排序`)
+    } catch (error) {
+      console.error("重置内容排序失败:", error)
+      throw error
+    }
+  }
+
   async logAccess(data: {
     content_id: number
     access_type: string

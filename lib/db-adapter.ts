@@ -29,6 +29,7 @@ export interface DatabaseAdapter {
   }): Promise<any | null>
   deleteContent(id: number): Promise<any | null>
   updateContentSortOrder(id: number, sortOrder: number): Promise<any | null>
+  resetContentSortOrder(contentType: ContentType): Promise<void>
   
   // 访问日志
   logAccess(data: {

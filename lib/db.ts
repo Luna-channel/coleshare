@@ -190,6 +190,17 @@ export async function updateContentSortOrder(id: number, sortOrder: number) {
   }
 }
 
+// 重置内容排序
+export async function resetContentSortOrder(contentType: ContentType) {
+  try {
+    const adapter = await getDbAdapter()
+    return await adapter.resetContentSortOrder(contentType)
+  } catch (error) {
+    console.error("重置内容排序失败:", error)
+    throw error
+  }
+}
+
 // 删除内容
 export async function deleteContent(id: number) {
   try {

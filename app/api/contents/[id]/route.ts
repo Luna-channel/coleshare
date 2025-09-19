@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { withMemberAuth, withAdminAuth } from "@/lib/auth"
 import { getContent, updateContent, deleteContent, logAccess, getContentsByIds } from "@/lib/db"
-import { deleteFromBlob } from "@/lib/blob"
+import { deleteFile } from "@/lib/storage"
 
 // 获取单个内容
 export const GET = withMemberAuth(async (req: NextRequest) => {
@@ -171,12 +171,12 @@ export const DELETE = withAdminAuth(async (req: NextRequest) => {
 
     // 删除Blob存储中的文件
     if (dbContent.blob_url) {
-      await deleteFromBlob(dbContent.blob_url)
+      await deleteFile(dbContent.blob_url)
     }
 
     // 如果缩略图URL与blob_url不同，也需要删除
     if (dbContent.thumbnail_url && dbContent.thumbnail_url !== dbContent.blob_url) {
-      await deleteFromBlob(dbContent.thumbnail_url)
+      await deleteFile(dbContent.thumbnail_url)
     }
 
     return NextResponse.json({ success: true })
