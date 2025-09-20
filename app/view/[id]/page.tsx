@@ -80,7 +80,7 @@ export default function ViewContent({ params }: { params: any }) {
   const shouldShowImage = () => {
     return !!content?.thumbnail_url;
   }
-  
+
   // 处理文件下载
   const handleDownload = async () => {
     try {
@@ -88,16 +88,16 @@ export default function ViewContent({ params }: { params: any }) {
       const url = content.blob_url;
       const urlParts = url.split('/');
       let fileName = urlParts[urlParts.length - 1];
-      
+
       // 如果文件名包含查询参数，去掉它们
       if (fileName.includes('?')) {
         fileName = fileName.split('?')[0];
       }
-      
+
       // 根据内容类型设置更友好的文件名
       const typeLabel = getTypeLabel(content.content_type);
       const cleanName = content.name.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_');
-      
+
       // 确保文件扩展名正确
       let extension = fileName.split('.').pop();
       if (!extension || extension.length > 5) {
@@ -108,29 +108,38 @@ export default function ViewContent({ params }: { params: any }) {
           extension = 'json';
         }
       }
-      
+
       // 确保文件名有正确的前缀
       const downloadName = `${cleanName}_${typeLabel}.${extension}`;
       console.log('下载文件名:', downloadName);
-      
+
+      // --- 地址修正代码 开始 ---
+      const lastSlashIndex = url.lastIndexOf('/');
+      const baseUrl = url.substring(0, lastSlashIndex + 1);
+      const filename = url.substring(lastSlashIndex + 1);
+      const correctUrl = baseUrl + encodeURIComponent(filename);
+      console.log('原始URL:', url);
+      console.log('修复后的URL:', correctUrl);
+      // --- 地址修正代码 结束 ---
+
       // 获取文件内容
-      const response = await fetch(url);
+      const response = await fetch(correctUrl);
       if (!response.ok) {
         throw new Error('获取文件内容失败');
       }
-      
+
       const blob = await response.blob();
-      
+
       // 创建下载链接
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = downloadName;
-      
+
       // 模拟点击下载
       document.body.appendChild(link);
       link.click();
-      
+
       // 清理
       setTimeout(() => {
         window.URL.revokeObjectURL(downloadUrl);
@@ -148,11 +157,11 @@ export default function ViewContent({ params }: { params: any }) {
       if (!content || !content.blob_url) {
         throw new Error("内容链接不可用");
       }
-      
+
       // 生成二维码
       const qrDataUrl = await QRCode.toDataURL(content.blob_url);
       setQrCodeDataUrl(qrDataUrl);
-      
+
       // 打开对话框
       setQrDialogOpen(true);
     } catch (error) {
@@ -222,8 +231,8 @@ export default function ViewContent({ params }: { params: any }) {
                   <Download className="mr-2 h-4 w-4" />
                   <span>下载{getTypeLabel(content.content_type)}</span>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="bg-gray-800 text-white border-gray-700 hover:bg-gray-700"
                   onClick={handleShowQRCode}
                 >
@@ -276,9 +285,9 @@ export default function ViewContent({ params }: { params: any }) {
                             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-purple-500 transition-all">
                               <div className="flex items-start gap-3">
                                 {resource.thumbnail_url ? (
-                                  <img 
-                                    src={resource.thumbnail_url} 
-                                    alt={resource.name} 
+                                  <img
+                                    src={resource.thumbnail_url}
+                                    alt={resource.name}
                                     className="w-16 h-16 object-cover rounded-md"
                                     onError={(e) => {
                                       e.currentTarget.style.display = 'none';
