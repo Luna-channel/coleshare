@@ -16,7 +16,7 @@ const contentTypeMap = {
 }
 
 // 从环境变量获取存储前缀，默认为"oshare/"
-const STORAGE_PREFIX = `${process.env.BLOB_PREFIX || "oshare"}/`
+const STORAGE_PREFIX = ``
 
 // 初始化 R2 客户端
 const r2 = new R2({
