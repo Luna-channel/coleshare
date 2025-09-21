@@ -113,15 +113,6 @@ export default function ViewContent({ params }: { params: any }) {
       const downloadName = `${cleanName}_${typeLabel}.${extension}`;
       console.log('下载文件名:', downloadName);
 
-      // --- 地址修正代码 开始 ---
-      const lastSlashIndex = url.lastIndexOf('/');
-      const baseUrl = url.substring(0, lastSlashIndex + 1);
-      const filename = url.substring(lastSlashIndex + 1);
-      const correctUrl = baseUrl + encodeURIComponent(filename);
-      console.log('原始URL:', url);
-      console.log('修复后的URL:', correctUrl);
-      // --- 地址修正代码 结束 ---
-
       // 获取文件内容
       const response = await fetch(correctUrl);
       if (!response.ok) {
