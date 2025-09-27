@@ -131,12 +131,8 @@ export async function uploadFile(
       // 上传主文件
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      await bucket.upload({
-        key: prefixedFilename,
-        body: buffer,
-        httpMetadata: {
-          contentType: mimeType
-        }
+      await bucket.upload(prefixedFilename, buffer, {
+        contentType: mimeType
       })
       
       // 构建公开访问URL
@@ -149,12 +145,8 @@ export async function uploadFile(
         
         const thumbnailArrayBuffer = await thumbnailFile.arrayBuffer()
         const thumbnailBuffer = Buffer.from(thumbnailArrayBuffer)
-        await bucket.upload({
-          key: prefixedThumbnailFilename,
-          body: thumbnailBuffer,
-          httpMetadata: {
-            contentType: 'image/jpeg'
-          }
+        await bucket.upload(prefixedThumbnailFilename, thumbnailBuffer, {
+          contentType: 'image/jpeg'
         })
         
         thumbnailUrl = `${process.env.R2_PUBLIC_URL}/${prefixedThumbnailFilename}`
