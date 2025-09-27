@@ -103,7 +103,30 @@ export async function uploadFile(
       const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
       
       // 确定正确的 Content-Type
-      const mimeType = file.type || (extension === 'png' ? 'image/png' : 'application/octet-stream')
+      const getMimeType = (file: File, extension: string, contentType: string) => {
+        // 优先使用文件的原始 MIME 类型
+        if (file.type) {
+          return file.type
+        }
+        
+        // 根据扩展名推断 MIME 类型
+        const mimeMap: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+          'json': 'application/json',
+          'txt': 'text/plain',
+          'md': 'text/markdown',
+          'pdf': 'application/pdf',
+        }
+        
+        return mimeMap[extension.toLowerCase()] || 'application/octet-stream'
+      }
+
+      const mimeType = getMimeType(file, extension, contentType)
       
       // 上传主文件
       const arrayBuffer = await file.arrayBuffer()
