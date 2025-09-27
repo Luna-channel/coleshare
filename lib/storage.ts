@@ -1,5 +1,5 @@
 import { put, del } from "@vercel/blob"
-import { R2 } from "node-cloudflare-r2"
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { nanoid } from "nanoid"
 import sharp from 'sharp'
 import { uploadFileLocal, deleteFileLocal, isLocalStorageAvailable } from './local-storage'
@@ -19,10 +19,13 @@ const contentTypeMap = {
 const STORAGE_PREFIX = `${process.env.BLOB_PREFIX || "oshare"}/`;
 
 // 初始化 R2 客户端
-const r2 = new R2({
-  accountId: process.env.R2_ACCOUNT_ID || '',
-  accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-  secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+const r2Client = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+  },
 })
 
 // 生成jpg缩略图
@@ -100,7 +103,7 @@ export async function uploadFile(
       }
     } else {
       // Cloudflare R2 存储
-      const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
+      const bucket = r2Client.bucket(process.env.R2_BUCKET_NAME || '')
       
       // 确定正确的 Content-Type
       const getMimeType = (file: File, extension: string, contentType: string) => {
@@ -131,9 +134,12 @@ export async function uploadFile(
       // 上传主文件
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      await bucket.upload(prefixedFilename, buffer, {
-        contentType: mimeType
-      })
+      await r2Client.send(new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME || '',
+        Key: prefixedFilename,
+        Body: buffer,
+        ContentType: mimeType,
+      }))
       
       // 构建公开访问URL
       url = `${process.env.R2_PUBLIC_URL}/${prefixedFilename}`
@@ -145,9 +151,12 @@ export async function uploadFile(
         
         const thumbnailArrayBuffer = await thumbnailFile.arrayBuffer()
         const thumbnailBuffer = Buffer.from(thumbnailArrayBuffer)
-        await bucket.upload(prefixedThumbnailFilename, thumbnailBuffer, {
-          contentType: 'image/jpeg'
-        })
+        await r2Client.send(new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME || '',
+          Key: prefixedThumbnailFilename,
+          Body: thumbnailBuffer,
+          ContentType: 'image/jpeg'
+        }))
         
         thumbnailUrl = `${process.env.R2_PUBLIC_URL}/${prefixedThumbnailFilename}`
       }
@@ -189,7 +198,7 @@ export async function deleteFile(url: string): Promise<boolean> {
       if (storageType === 'vercel') {
         await del(fullPath)
       } else {
-        const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
+        const bucket = r2Client.bucket(process.env.R2_BUCKET_NAME || '')
         await bucket.deleteObject(fullPath)
       }
     }
