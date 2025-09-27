@@ -131,7 +131,9 @@ export async function uploadFile(
       // 上传主文件
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      await bucket.put(prefixedFilename, buffer, {
+      await bucket.upload({
+        key: prefixedFilename,
+        body: buffer,
         httpMetadata: {
           contentType: mimeType
         }
@@ -147,7 +149,9 @@ export async function uploadFile(
         
         const thumbnailArrayBuffer = await thumbnailFile.arrayBuffer()
         const thumbnailBuffer = Buffer.from(thumbnailArrayBuffer)
-        await bucket.put(prefixedThumbnailFilename, thumbnailBuffer, {
+        await bucket.upload({
+          key: prefixedThumbnailFilename,
+          body: thumbnailBuffer,
           httpMetadata: {
             contentType: 'image/jpeg'
           }
