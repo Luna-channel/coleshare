@@ -103,7 +103,6 @@ export async function uploadFile(
       }
     } else {
       // Cloudflare R2 存储
-      const bucket = r2Client.bucket(process.env.R2_BUCKET_NAME || '')
       
       // 确定正确的 Content-Type
       const getMimeType = (file: File, extension: string, contentType: string) => {
@@ -198,8 +197,12 @@ export async function deleteFile(url: string): Promise<boolean> {
       if (storageType === 'vercel') {
         await del(fullPath)
       } else {
-        const bucket = r2Client.bucket(process.env.R2_BUCKET_NAME || '')
-        await bucket.deleteObject(fullPath)
+        await r2Client.send(new PutObjectCommand({
+          Bucket: process.env.R2_BUCKET_NAME || '',
+          Key: fullPath,
+          Body: '', // 删除对象时，Body 为空
+          ContentType: 'application/octet-stream', // 确保 Content-Type 为空或默认值
+        }))
       }
     }
     
