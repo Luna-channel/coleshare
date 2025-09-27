@@ -102,10 +102,17 @@ export async function uploadFile(
       // Cloudflare R2 存储
       const bucket = r2.bucket(process.env.R2_BUCKET_NAME || '')
       
+      // 确定正确的 Content-Type
+      const mimeType = file.type || (extension === 'png' ? 'image/png' : 'application/octet-stream')
+      
       // 上传主文件
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
-      await bucket.upload(buffer, prefixedFilename)
+      await bucket.upload(buffer, prefixedFilename, {
+        httpMetadata: {
+          contentType: mimeType
+        }
+      })
       
       // 构建公开访问URL
       url = `${process.env.R2_PUBLIC_URL}/${prefixedFilename}`
@@ -117,7 +124,11 @@ export async function uploadFile(
         
         const thumbnailArrayBuffer = await thumbnailFile.arrayBuffer()
         const thumbnailBuffer = Buffer.from(thumbnailArrayBuffer)
-        await bucket.upload(thumbnailBuffer, prefixedThumbnailFilename)
+        await bucket.upload(thumbnailBuffer, prefixedThumbnailFilename, {
+          httpMetadata: {
+            contentType: 'image/jpeg'
+          }
+        })
         
         thumbnailUrl = `${process.env.R2_PUBLIC_URL}/${prefixedThumbnailFilename}`
       }
